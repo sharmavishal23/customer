@@ -1,6 +1,17 @@
 export type Lang = "en" | "es";
 
 const en = {
+  nav_notifications: "Notifications",
+  nav_profile: "Profile",
+  edit_profile: "Edit profile",
+  public_tracking: "Public tracking page",
+  sign_out: "Sign out",
+  view_all: "View all",
+  mark_all_read: "Mark all as read",
+  unread: "Unread",
+  back: "Back",
+  save: "Save changes",
+  cancel: "Cancel",
   nav_track: "Track & Trace",
   nav_shipments: "Shipments",
   nav_documents: "Documents",
@@ -85,6 +96,17 @@ const en = {
 export type Key = keyof typeof en;
 
 const es: Record<Key, string> = {
+  nav_notifications: "Notificaciones",
+  nav_profile: "Perfil",
+  edit_profile: "Editar perfil",
+  public_tracking: "Página pública de rastreo",
+  sign_out: "Cerrar sesión",
+  view_all: "Ver todo",
+  mark_all_read: "Marcar todo como leído",
+  unread: "No leídas",
+  back: "Volver",
+  save: "Guardar cambios",
+  cancel: "Cancelar",
   nav_track: "Rastreo",
   nav_shipments: "Envíos",
   nav_documents: "Documentos",

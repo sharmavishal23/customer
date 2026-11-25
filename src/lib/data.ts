@@ -301,3 +301,106 @@ export function relative(iso: string) {
   const span = d >= 1 ? `${d}d ${h % 24}h` : h >= 1 ? `${h}h ${m}m` : `${m}m`;
   return diff >= 0 ? `in ${span}` : `${span} ago`;
 }
+
+// ---------- history (deterministic sample data for reports, tables & documents) ----------
+
+function mulberry32(seed: number) {
+  return () => {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+type Lane = { dest: string; via?: string; flights: string[]; prefix: string; depHour: number; legs: number[]; consignee: string; weight: number };
+
+const LANES: Lane[] = [
+  { dest: "HKG", flights: ["KL 887"], prefix: "074", depHour: 19.3, legs: [11.5], consignee: "Kowloon Precision Machinery Ltd, Hong Kong", weight: 5 },
+  { dest: "HKG", flights: ["CX 270"], prefix: "160", depHour: 19.1, legs: [11.7], consignee: "Kowloon Precision Machinery Ltd, Hong Kong", weight: 3 },
+  { dest: "SIN", via: "DXB", flights: ["EK 148", "EK 354"], prefix: "176", depHour: 21.2, legs: [6.4, 7.6], consignee: "Orchid Lane Engineering Pte Ltd, Singapore", weight: 3 },
+  { dest: "GRU", flights: ["KL 791"], prefix: "074", depHour: 20.5, legs: [12], consignee: "Flores Engenharia Industrial Ltda, São Paulo", weight: 3 },
+  { dest: "MEX", flights: ["KL 685"], prefix: "074", depHour: 16.3, legs: [11.5], consignee: "Distribuidora Industrial Jardín SA de CV, Mexico City", weight: 2 },
+  { dest: "PVG", flights: ["KL 895"], prefix: "074", depHour: 18.5, legs: [11], consignee: "Shanghai Huaxin Automation Co., Ltd", weight: 3 },
+  { dest: "BOG", flights: ["AV 31"], prefix: "045", depHour: 16.1, legs: [11], consignee: "Andes Maquinaria SAS, Bogotá", weight: 2 },
+  { dest: "JFK", flights: ["DL 47"], prefix: "006", depHour: 6.9, legs: [8.5], consignee: "Hudson Industrial Supply Inc., New York", weight: 2 },
+];
+
+const COMMODITIES = ["Hydraulic pump components", "Valve assemblies", "Gearbox spare parts", "Sensor modules", "Conveyor drive units", "Bearings & seals", "Control panels", "Pump housings"];
+
+const iso = (ms: number) => new Date(Math.round(ms / 60000) * 60000).toISOString().replace(".000Z", "Z");
+
+function buildHistory(): Shipment[] {
+  const r = mulberry32(20261125);
+  const pick = <T,>(arr: T[]) => arr[Math.floor(r() * arr.length)];
+  const lanePool = LANES.flatMap((l) => Array(l.weight).fill(l) as Lane[]);
+  const out: Shipment[] = [];
+  const start = Date.UTC(2026, 7, 3); // 3 Aug 2026
+  const end = Date.UTC(2026, 10, 19); // 19 Nov 2026
+  let day = start;
+  let id = 4930;
+  const H = 3600000;
+  while (day < end) {
+    const lane = pick(lanePool);
+    const depPlanned = day + lane.depHour * H;
+    const depDelay = r() < 0.88 ? Math.round(r() * 22 - 10) : Math.round(16 + r() * (r() < 0.2 ? 150 : 45));
+    const offloaded = r() < 0.05;
+    const offDelay = offloaded ? 24 * H : 0;
+    const depActual = depPlanned + depDelay * 60000 + offDelay;
+    const legsTotal = lane.legs.reduce((a, b) => a + b, 0) + (lane.via ? 3 : 0);
+    const arrPlanned = depPlanned + legsTotal * H;
+    const arrActual = depActual + (legsTotal + (r() * 0.3 - 0.22)) * H;
+    const pieces = 6 + Math.floor(r() * 60);
+    const actualWeight = Math.round(pieces * (9 + r() * 14));
+    const chargeableWeight = Math.max(actualWeight, Math.round(actualWeight * (1 + r() * 0.3)));
+    const serial = 10000000 + Math.floor(r() * 89999999);
+    const awbSerial = `${Math.floor(serial / 10)}`.padStart(7, "0");
+    const awb = `${lane.prefix}-${awbSerial}${Number(awbSerial) % 7}`;
+    const milestones: Milestone[] = [
+      { key: "pickup", at: "AMS", planned: iso(day + 7 * H), actual: iso(day + 7 * H + (r() * 30 - 10) * 60000), source: "trucking" },
+      { key: "loaded", at: "AMS", planned: iso(depPlanned - 3 * H), actual: iso(depPlanned - 3 * H - r() * 30 * 60000), source: "airline" },
+    ];
+    if (offloaded)
+      milestones.push({ key: "offload", at: "AMS", actual: iso(depPlanned - 1 * H), source: "airline", note: `Offloaded from ${lane.flights[0]} due to capacity. Rebooked on next day's flight.` });
+    milestones.push({ key: "departed", at: "AMS", planned: iso(depPlanned + offDelay), actual: iso(depActual), source: "flight" });
+    if (lane.via) {
+      const t = depActual + lane.legs[0] * H;
+      milestones.push({ key: "transit", at: lane.via, planned: iso(depPlanned + offDelay + lane.legs[0] * H), actual: iso(t), source: "flight", note: `Connected to ${lane.flights[1]}` });
+    }
+    milestones.push({ key: "arrived", at: lane.dest, planned: iso(arrPlanned + offDelay), actual: iso(arrActual), source: "flight" });
+    out.push({
+      id: String(id++),
+      awb,
+      status: "arrived",
+      origin: "AMS",
+      destination: lane.dest,
+      via: lane.via,
+      flights: lane.flights,
+      shipper: `Nordhaven Industrial Parts B.V., ${r() < 0.75 ? "Rotterdam" : "Eindhoven"}`,
+      consignee: lane.consignee,
+      pieces,
+      actualWeight,
+      chargeableWeight,
+      commodity: pick(COMMODITIES),
+      reference: `PO-${87400 + Math.floor(r() * 750)}`,
+      milestones,
+      documents: docs(iso(day + 6 * H), true),
+    });
+    day += Math.round(1 + r() * 1.6) * 24 * H; // a shipment every 1–3 days (keeps times of day realistic)
+  }
+  return out.reverse();
+}
+
+export const HISTORY: Shipment[] = buildHistory();
+export const ALL_SHIPMENTS: Shipment[] = [...SHIPMENTS, ...HISTORY];
+
+export const findShipment = (key: string) => {
+  const k = key.trim().toLowerCase().replace(/[\s-]/g, "");
+  return ALL_SHIPMENTS.find((s) => s.id === k || s.awb.replace("-", "") === k);
+};
+
+export const departedAt = (s: Shipment) => {
+  const d = etd(s);
+  return d?.actual ?? d?.planned ?? s.milestones[0].planned!;
+};
