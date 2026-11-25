@@ -1,36 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Airflo — Customer Track & Trace Portal (UI prototype)
 
-## Getting Started
+Clickable Next.js prototype of a customer-facing track & trace portal, built for the commercial review.
+All data is mock data (`src/lib/data.ts`); APIs (CargoWise, FlightRadar24, trucking updates) are to be wired in later.
 
-First, run the development server:
+## Run
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev   # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## What's on the page
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Requirement (from the brief) | Where in the UI |
+| --- | --- |
+| Pick-up time at customer | Journey timeline · source "Trucking partner" |
+| ETD / ATD, ETA / ATA | Route header (planned vs actual, delay chip), timeline, shipment list |
+| Flight transit | Map (transit hub + aircraft position), timeline step |
+| Freight loaded (should have) | Timeline step |
+| Shipment offload (should have) | Red alert + timeline exception, old flight struck through |
+| Shipper, consignee, actual & chargeable weight, shipment no., AWB | Shipment details card, list, document preview |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Extras: AWB / shipment search, status filter tiles, documents with preview, notification preferences (email / WhatsApp) with an automatic-updates feed, share-tracking link, EN/ES language toggle (Latin America), responsive layout.
 
-## Learn More
+## Structure
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/app/page.tsx` — portal page and UI components
+- `src/components/RouteMap.tsx` — SVG world map (d3-geo + world-atlas), great-circle route, live aircraft position
+- `src/lib/data.ts` — mock shipments & milestones (shape mirrors the requirements)
+- `src/lib/i18n.ts` — English / Spanish labels
