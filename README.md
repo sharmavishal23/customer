@@ -23,6 +23,20 @@ Sample persona: **Sanne de Vries**, Regional Logistics Manager at **Nordhaven La
 
 Tip: "Reset demo profile" on the Edit profile page restores the sample data after people have clicked around.
 
+## Recording the narrated demo video
+
+`scripts/record-demo.mjs` plays the demo flow above in a real browser (with a visible cursor), generates a voiceover with [Piper](https://github.com/rhasspy/piper) text-to-speech, burns in step titles and writes `airflo-portal-demo.mp4` plus a `demo.srt` subtitle file. Edit the `STEPS` list in the script to change narration or clicks.
+
+```bash
+npm run build && npx serve out -l 3200          # serve the static site
+python3 -m venv .tts && .tts/bin/pip install piper-tts
+.tts/bin/python -m piper.download_voices en_US-lessac-high
+NODE_PATH=$(npm root -g) node scripts/record-demo.mjs --base http://localhost:3200 --out demo-out \
+  --piper .tts/bin/piper --voice en_US-lessac-high.onnx
+```
+
+Requires Playwright with Chromium and ffmpeg (with libass).
+
 ## Run
 
 ```bash
