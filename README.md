@@ -12,16 +12,30 @@ npm run dev   # http://localhost:3000
 
 ## Pages
 
+### Public & sign-in
+
 | Page | Route | What it does |
 | --- | --- | --- |
-| Track & Trace | `/` | Dashboard: status tiles, active shipments, live route map, milestone timeline, details, documents |
+| Landing page | `/` | Product website: hero with AWB search, features, milestones, how it works, destinations (LatAm), FAQ |
+| Log in | `/login` | Email + password, then a 6-digit verification code; "keep me logged in" |
+| Forgot password | `/forgot-password` | Request reset link → choose new password (with strength rules) |
+| Request access | `/request-access` | Sign-up request for existing and new customers |
+
+**Demo login:** `sanne.devries@nordhaven.example` / `airflo2026`, then any 6-digit code (the login page has "Fill" buttons).
+All portal pages require login; logged-out visitors are sent to `/login` and returned to the page they wanted afterwards.
+
+### Customer portal (after login)
+
+| Page | Route | What it does |
+| --- | --- | --- |
+| Track & Trace | `/dashboard` | Dashboard: status tiles, active shipments, live route map, milestone timeline, details, documents |
 | Shipments | `/shipments` | All shipments: search, status/destination/period filters, sorting, pagination, CSV export |
 | Shipment detail | `/shipments/[id]` | Full detail page per shipment (pre-rendered for every shipment) |
 | Documents | `/documents` | All documents across shipments: type filters, search, preview, (bulk) download |
 | Reports | `/reports` | KPIs, chargeable weight per month, on-time arrival trend, volume by destination, punctuality, lane table, export |
 | Notifications | `/notifications` | Update inbox (read/unread, filters, mark all read) + preferences: channels per event, digest, quiet hours, extra recipients |
 | Profile | `/profile` | Contact & company details, notification summary, team members, Airflo contacts, security |
-| Edit profile | `/profile/edit` | Validated form; changes persist in the browser and update the whole portal |
+| Edit profile | `/profile/edit` | Validated form + change password; changes persist in the browser and update the whole portal |
 | Public tracking | `/track` | No-login tracking for up to 5 AWBs, with sample AWBs to try |
 
 The header has AWB/shipment search, an EN/ES language switch, a notification bell with dropdown, and an account menu.
@@ -42,9 +56,10 @@ Sample data: 8 active shipments plus ~60 generated historical shipments (Aug–N
 ## Structure
 
 - `src/app/*` — one folder per page (see table above)
-- `src/components/AppShell.tsx` — header, navigation, notification bell, account menu
+- `src/components/AppShell.tsx` — headers (website & portal), navigation, notification bell, account menu, login guard
+- `src/components/AuthLayout.tsx` — split-screen layout for login / sign-up pages
 - `src/components/shipment.tsx` — shared shipment UI (timeline, details, documents, status pills…)
-- `src/lib/store.tsx` — profile, language and notification state (saved in the browser)
+- `src/lib/store.tsx` — login session, profile, language and notification state (saved in the browser)
 - `src/components/RouteMap.tsx` — SVG world map (d3-geo + world-atlas), great-circle route, live aircraft position
 - `src/lib/data.ts` — mock shipments & milestones (shape mirrors the requirements)
 - `src/lib/i18n.ts` — English / Spanish labels

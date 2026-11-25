@@ -137,7 +137,16 @@ export const NOTIFICATIONS = buildNotifications();
 /* Context                                                             */
 /* ------------------------------------------------------------------ */
 
+export type Session = { email: string; since: string; remember: boolean };
+
+export const DEMO_PASSWORD = "airflo2026";
+
 type Store = {
+  ready: boolean;
+  session: Session | null;
+  checkCredentials: (email: string, password: string) => boolean;
+  signIn: (email: string, remember: boolean) => void;
+  signOut: () => void;
   lang: Lang;
   setLang: (l: Lang) => void;
   t: (k: Key) => string;
@@ -175,11 +184,55 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>("en");
   const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
   const [readIds, setReadIds] = useState<Set<string>>(new Set(initiallyRead));
+  const [session, setSession] = useState<Session | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    // Remembered sessions live in localStorage, others only for this browser tab.
+    let sess: Session | null = load<Session | null>("airflo.session", null);
+    if (!sess) {
+      try {
+        const raw = sessionStorage.getItem("airflo.session");
+        sess = raw ? (JSON.parse(raw) as Session) : null;
+      } catch {
+        sess = null;
+      }
+    }
+    setSession(sess);
     setLangState(load<Lang>("airflo.lang", "en"));
     setProfile({ ...DEFAULT_PROFILE, ...load<Partial<Profile>>("airflo.profile", {}) });
     setReadIds(new Set(load<string[]>("airflo.read", initiallyRead)));
+    setReady(true);
+  }, []);
+
+  const checkCredentials = useCallback(
+    (email: string, password: string) => {
+      const e = email.trim().toLowerCase();
+      return password === DEMO_PASSWORD && (e === profile.email.toLowerCase() || e === DEFAULT_PROFILE.email);
+    },
+    [profile.email],
+  );
+
+  const signIn = useCallback((email: string, remember: boolean) => {
+    const s: Session = { email, since: new Date().toISOString(), remember };
+    setSession(s);
+    if (remember) save("airflo.session", s);
+    else
+      try {
+        sessionStorage.setItem("airflo.session", JSON.stringify(s));
+      } catch {
+        /* storage unavailable */
+      }
+  }, []);
+
+  const signOut = useCallback(() => {
+    setSession(null);
+    try {
+      localStorage.removeItem("airflo.session");
+      sessionStorage.removeItem("airflo.session");
+    } catch {
+      /* storage unavailable */
+    }
   }, []);
 
   const setLang = useCallback((l: Lang) => {
@@ -219,6 +272,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<Store>(
     () => ({
+      ready,
+      session,
+      checkCredentials,
+      signIn,
+      signOut,
       lang,
       setLang,
       t: (k: Key) => dict[lang][k] ?? dict.en[k] ?? k,
@@ -230,7 +288,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       markUnread,
       unreadCount: NOTIFICATIONS.filter((n) => !readIds.has(n.id)).length,
     }),
-    [lang, setLang, profile, saveProfile, resetProfile, readIds, markRead, markUnread],
+    [ready, session, checkCredentials, signIn, signOut, lang, setLang, profile, saveProfile, resetProfile, readIds, markRead, markUnread],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

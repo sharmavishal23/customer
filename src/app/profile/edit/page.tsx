@@ -3,10 +3,57 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, RotateCcw } from "lucide-react";
+import { ArrowLeft, Check, KeyRound, RotateCcw } from "lucide-react";
 import { PAGE } from "@/components/AppShell";
 import { cx } from "@/components/shipment";
-import { useStore, type Profile } from "@/lib/store";
+import { DEMO_PASSWORD, useStore, type Profile } from "@/lib/store";
+
+function ChangePassword() {
+  const [cur, setCur] = useState("");
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const cls = "mt-1 h-10 w-full rounded-lg bg-white px-3 text-sm outline-none ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-500";
+  return (
+    <form
+      id="security"
+      className="scroll-mt-40 rounded-2xl bg-white p-5 ring-1 ring-slate-200 sm:p-6"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (cur !== DEMO_PASSWORD) return setMsg({ ok: false, text: "Your current password is incorrect." });
+        if (pw.length < 8 || !/\d/.test(pw) || !/[A-Z]/.test(pw)) return setMsg({ ok: false, text: "Use at least 8 characters with a number and an uppercase letter." });
+        if (pw !== pw2) return setMsg({ ok: false, text: "The new passwords don't match." });
+        setMsg({ ok: true, text: "Password updated (demo — the demo password stays the same)." });
+        setCur("");
+        setPw("");
+        setPw2("");
+      }}
+      noValidate
+    >
+      <h2 className="flex items-center gap-2 text-[15px] font-semibold text-slate-900">
+        <KeyRound className="h-4 w-4 text-slate-400" /> Change password
+      </h2>
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <label className="block">
+          <span className="text-xs font-medium text-slate-600">Current password</span>
+          <input type="password" value={cur} onChange={(e) => setCur(e.target.value)} className={cls} autoComplete="current-password" />
+        </label>
+        <label className="block">
+          <span className="text-xs font-medium text-slate-600">New password</span>
+          <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} className={cls} autoComplete="new-password" />
+        </label>
+        <label className="block">
+          <span className="text-xs font-medium text-slate-600">Confirm new password</span>
+          <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} className={cls} autoComplete="new-password" />
+        </label>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Update password</button>
+        {msg && <span className={cx("text-sm", msg.ok ? "text-emerald-600" : "text-rose-600")}>{msg.text}</span>}
+      </div>
+    </form>
+  );
+}
 
 type Errors = Partial<Record<keyof Profile, string>>;
 
@@ -175,6 +222,10 @@ export default function EditProfilePage() {
           </button>
         </aside>
       </form>
+
+      <div className="mt-6 lg:mr-[324px]">
+        <ChangePassword />
+      </div>
     </main>
   );
 }

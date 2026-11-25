@@ -210,7 +210,9 @@ export default function ProfilePage() {
                 <span className="inline-flex items-center gap-2 text-slate-600">
                   <KeyRound className="h-4 w-4 text-slate-400" /> Password
                 </span>
-                <span className="text-xs text-slate-500">Changed 3 months ago</span>
+                <Link href="/profile/edit#security" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                  Change
+                </Link>
               </li>
               <li className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-2 text-slate-600">

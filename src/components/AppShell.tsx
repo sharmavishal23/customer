@@ -25,6 +25,10 @@ import {
   PackageCheck,
   RefreshCw,
   Clock,
+  Home,
+  Loader2,
+  Menu,
+  X,
 } from "lucide-react";
 import { StoreProvider, useStore, NOTIFICATIONS, type NotificationType } from "@/lib/store";
 import { findShipment, NOW } from "@/lib/data";
@@ -59,7 +63,7 @@ export function timeAgo(iso: string) {
 }
 
 const NAV: { href: string; label: Key; icon: typeof Bell }[] = [
-  { href: "/", label: "nav_track", icon: LayoutDashboard },
+  { href: "/dashboard", label: "nav_track", icon: LayoutDashboard },
   { href: "/shipments", label: "nav_shipments", icon: Package },
   { href: "/documents", label: "nav_documents", icon: FileText },
   { href: "/reports", label: "nav_reports", icon: BarChart3 },
@@ -76,15 +80,15 @@ function useClickOutside(ref: React.RefObject<HTMLElement | null>, onOut: () => 
   }, [ref, onOut]);
 }
 
-function Logo({ sub = "Track & Trace" }: { sub?: string }) {
+export function Logo({ sub = "Track & Trace", href = "/dashboard", light = false }: { sub?: string; href?: string; light?: boolean }) {
   return (
-    <Link href="/" className="flex items-center gap-2.5">
+    <Link href={href} className="flex items-center gap-2.5">
       <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-sm shadow-blue-600/30">
         <Plane className="h-[18px] w-[18px] -rotate-45" />
       </div>
       <div className="leading-tight">
-        <div className="text-[15px] font-bold tracking-tight text-slate-900">Airflo</div>
-        <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">{sub}</div>
+        <div className={cx("text-[15px] font-bold tracking-tight", light ? "text-white" : "text-slate-900")}>Airflo</div>
+        <div className={cx("text-[10px] font-medium uppercase tracking-[0.14em]", light ? "text-blue-200" : "text-slate-400")}>{sub}</div>
       </div>
     </Link>
   );
@@ -162,7 +166,7 @@ function BellMenu() {
 }
 
 function UserMenu() {
-  const { t, profile } = useStore();
+  const { t, profile, signOut } = useStore();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useClickOutside(ref, () => setOpen(false));
@@ -193,10 +197,20 @@ function UserMenu() {
           <Link href="/track" className={item}>
             <ExternalLink className="h-4 w-4 text-slate-400" /> {t("public_tracking")}
           </Link>
-          <div className="my-1 h-px bg-slate-100" />
-          <Link href="/track" className={item}>
-            <LogOut className="h-4 w-4 text-slate-400" /> {t("sign_out")}
+          <Link href="/" className={item}>
+            <Home className="h-4 w-4 text-slate-400" /> Airflo website
           </Link>
+          <div className="my-1 h-px bg-slate-100" />
+          <button
+            onClick={() => {
+              signOut();
+              // Full navigation so the session guard doesn't race the redirect.
+              window.location.assign("/login/?signedout=1");
+            }}
+            className={cx(item, "w-full")}
+          >
+            <LogOut className="h-4 w-4 text-slate-400" /> {t("sign_out")}
+          </button>
         </div>
       )}
     </div>
@@ -210,7 +224,7 @@ function PortalHeader() {
   const [q, setQ] = useState("");
   const [miss, setMiss] = useState(false);
 
-  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const isActive = (href: string) => pathname.startsWith(href);
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur">
@@ -294,23 +308,64 @@ function PortalHeader() {
   );
 }
 
+const MARKETING_NAV = [
+  { href: "/#features", label: "Features" },
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#faq", label: "FAQ" },
+  { href: "/track", label: "Track a shipment" },
+];
+
 function PublicHeader() {
+  const { session, ready } = useStore();
+  const [open, setOpen] = useState(false);
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Logo sub="Shipment tracking" />
-        <Link href="/" className="rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800">
-          Customer login
-        </Link>
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+        <Logo sub="Cargo visibility" href="/" />
+        <nav className="hidden items-center gap-1 md:flex">
+          {MARKETING_NAV.map((n) => (
+            <Link key={n.href} href={n.href} className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+              {n.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="flex items-center gap-2">
+          {ready && session ? (
+            <Link href="/dashboard" className="rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+              Go to my portal
+            </Link>
+          ) : (
+            <>
+              <Link href="/login" className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 sm:block">
+                Log in
+              </Link>
+              <Link href="/request-access" className="rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800">
+                Request access
+              </Link>
+            </>
+          )}
+          <button onClick={() => setOpen(!open)} className="grid h-9 w-9 place-items-center rounded-lg ring-1 ring-slate-200 md:hidden" aria-label="Menu">
+            {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
+      {open && (
+        <nav className="border-t border-slate-100 px-4 py-2 md:hidden" onClick={() => setOpen(false)}>
+          {[...MARKETING_NAV, { href: "/login", label: "Log in" }].map((n) => (
+            <Link key={n.href} href={n.href} className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              {n.label}
+            </Link>
+          ))}
+        </nav>
+      )}
     </header>
   );
 }
 
-function Footer({ narrow }: { narrow?: boolean }) {
+function Footer() {
   const { t } = useStore();
   return (
-    <footer className={cx("mx-auto mt-6 flex w-full flex-col items-center justify-between gap-3 border-t border-slate-200 px-4 py-6 text-xs text-slate-500 sm:flex-row sm:px-6 lg:px-8", narrow ? "max-w-6xl" : "max-w-[1440px]")}>
+    <footer className="mx-auto mt-6 flex w-full max-w-[1440px] flex-col items-center justify-between gap-3 border-t border-slate-200 px-4 py-6 text-xs text-slate-500 sm:flex-row sm:px-6 lg:px-8">
       <span>© 2026 Airflo · Air freight forwarding</span>
       <span className="inline-flex items-center gap-1.5">
         <Headphones className="h-3.5 w-3.5" /> {t("contact")}: export@airflo.example · +31 20 000 0000
@@ -319,15 +374,83 @@ function Footer({ narrow }: { narrow?: boolean }) {
   );
 }
 
+const PUBLIC_ROUTES = ["/", "/track"];
+const AUTH_ROUTES = ["/login", "/forgot-password", "/request-access"];
+
 function Shell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const isPublic = pathname.startsWith("/track");
+  const raw = usePathname();
+  const pathname = raw.length > 1 ? raw.replace(/\/$/, "") : raw;
+  const router = useRouter();
+  const { ready, session } = useStore();
+  const isAuth = AUTH_ROUTES.includes(pathname);
+  const isPublic = PUBLIC_ROUTES.includes(pathname);
+  const isPortal = !isAuth && !isPublic;
+
+  useEffect(() => {
+    if (isPortal && ready && !session) router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+  }, [isPortal, ready, session, pathname, router]);
+
+  if (isAuth) return <>{children}</>;
+
+  if (isPortal && (!ready || !session)) {
+    return (
+      <div className="grid min-h-screen place-items-center">
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <Loader2 className="h-4 w-4 animate-spin" /> Checking your session…
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       {isPublic ? <PublicHeader /> : <PortalHeader />}
       <div className="flex-1">{children}</div>
-      <Footer narrow={isPublic} />
+      {isPublic ? <MarketingFooter /> : <Footer />}
     </div>
+  );
+}
+
+function MarketingFooter() {
+  const cols = [
+    { h: "Product", l: [["Features", "/#features"], ["How it works", "/#how-it-works"], ["Track a shipment", "/track"], ["Customer login", "/login"]] },
+    { h: "Company", l: [["About Airflo", "/#"], ["Destinations", "/#destinations"], ["Careers", "/#"], ["Contact", "mailto:export@airflo.example"]] },
+    { h: "Support", l: [["FAQ", "/#faq"], ["Request access", "/request-access"], ["Forgot password", "/forgot-password"], ["Export desk 24/7", "tel:+31200000000"]] },
+  ];
+  return (
+    <footer className="mt-16 border-t border-slate-200 bg-white">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+        <div>
+          <Logo sub="Cargo visibility" href="/" />
+          <p className="mt-4 max-w-xs text-sm text-slate-500">Air freight forwarding from Amsterdam to the world — with real-time visibility on every shipment.</p>
+          <p className="mt-4 text-xs text-slate-400">Schiphol Cargo · Amsterdam, Netherlands</p>
+        </div>
+        {cols.map((c) => (
+          <div key={c.h}>
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-900">{c.h}</div>
+            <ul className="mt-3 space-y-2">
+              {c.l.map(([label, href]) => (
+                <li key={label}>
+                  <Link href={href} className="text-sm text-slate-500 hover:text-slate-900">
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-slate-100">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 py-5 text-xs text-slate-400 sm:flex-row sm:px-6">
+          <span>© 2026 Airflo B.V. · All rights reserved</span>
+          <span className="flex gap-4">
+            <Link href="/#">Privacy</Link>
+            <Link href="/#">Terms</Link>
+            <Link href="/#">Cookies</Link>
+          </span>
+        </div>
+      </div>
+    </footer>
   );
 }
 
