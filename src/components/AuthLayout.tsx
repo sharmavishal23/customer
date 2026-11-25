@@ -5,9 +5,9 @@ import { ArrowLeft, CheckCircle2, PlaneLanding, PlaneTakeoff, TriangleAlert } fr
 import { Logo } from "@/components/AppShell";
 
 const FEED = [
-  { I: PlaneTakeoff, tone: "bg-blue-500/20 text-blue-100", title: "Departed · KL 887", body: "Shipment 5006 left Amsterdam at 20:34", time: "14h ago" },
-  { I: TriangleAlert, tone: "bg-amber-400/20 text-amber-100", title: "Rebooked · 5010", body: "Moved to KL 897 — no action needed", time: "1d ago" },
-  { I: PlaneLanding, tone: "bg-emerald-400/20 text-emerald-100", title: "Arrived · 5009", body: "KL 685 landed in Mexico City at 21:41", time: "2d ago" },
+  { I: PlaneTakeoff, tone: "bg-blue-500/20 text-blue-100", title: "Departed · KL 791", body: "42 pcs from Van Leeuwen Hydraulics, on its way to São Paulo", time: "10h ago" },
+  { I: TriangleAlert, tone: "bg-amber-400/20 text-amber-100", title: "Rebooked · 5010", body: "Moved to KL 687 to Mexico City — no action needed", time: "2d ago" },
+  { I: PlaneLanding, tone: "bg-emerald-400/20 text-emerald-100", title: "Arrived · 5009", body: "Landed in Mexico City · documents sent to your broker", time: "2d ago" },
 ];
 
 export default function AuthLayout({ children, title, subtitle }: { children: React.ReactNode; title: string; subtitle?: React.ReactNode }) {
@@ -43,11 +43,11 @@ export default function AuthLayout({ children, title, subtitle }: { children: Re
         <div className="relative flex h-full flex-col justify-between p-12 text-white">
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold ring-1 ring-white/20">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> Live · 3 shipments in the air right now
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> Live · 4 shipments on their way to you
             </span>
-            <h2 className="mt-6 max-w-md text-3xl font-semibold leading-tight tracking-tight">Know where your cargo is — without picking up the phone.</h2>
+            <h2 className="mt-6 max-w-md text-3xl font-semibold leading-tight tracking-tight">Know when your cargo lands — without chasing anyone.</h2>
             <ul className="mt-6 space-y-2.5 text-sm text-blue-100">
-              {["Live departure, transit and arrival times", "Automatic updates by email and WhatsApp", "All shipping documents in one place"].map((x) => (
+              {["Live departure, transit and arrival times", "Arrival alerts by email and WhatsApp", "Customs-ready documents, sent to your broker"].map((x) => (
                 <li key={x} className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-300" /> {x}
                 </li>

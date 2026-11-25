@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { BarChart3, Clock, Download, Package, PlaneLanding, PlaneTakeoff, Scale, Table2, TriangleAlert } from "lucide-react";
 import { PAGE, PageHeader } from "@/components/AppShell";
 import { cx } from "@/components/shipment";
-import { AIRPORTS, ALL_SHIPMENTS, NOW, delayMinutes, departedAt, eta, etd, type Shipment } from "@/lib/data";
+import { ALL_SHIPMENTS, NOW, SITES, SUPPLIERS, delayMinutes, departedAt, eta, etd, supplierName, type Shipment } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
 /* ---------------- metrics ---------------- */
@@ -239,6 +239,14 @@ export default function ReportsPage() {
     });
   }, [list]);
 
+  const suppliers = useMemo(
+    () =>
+      SUPPLIERS.map((sp) => ({ sp, ...summarize(list.filter((s) => s.shipper === sp)) }))
+        .filter((x) => x.count > 0)
+        .sort((a, b) => b.kg - a.kg),
+    [list],
+  );
+
   const lanes = useMemo(() => {
     const keys = [...new Set(list.map((s) => s.destination))];
     return keys
@@ -284,7 +292,7 @@ export default function ReportsPage() {
     <main className={PAGE}>
       <PageHeader
         title={t("nav_reports")}
-        subtitle="Performance of your air freight with Airflo — volumes, punctuality and exceptions."
+        subtitle="Your inbound air freight via Airflo — volumes per site and supplier, punctuality and exceptions."
         actions={
           <>
             <select value={period} onChange={(e) => setPeriod(e.target.value)} className={select} aria-label="Period">
@@ -294,15 +302,13 @@ export default function ReportsPage() {
                 </option>
               ))}
             </select>
-            <select value={dest} onChange={(e) => setDest(e.target.value)} className={select} aria-label="Destination">
-              <option value="all">All destinations</option>
-              {Object.keys(AIRPORTS)
-                .filter((c) => c !== "AMS" && c !== "DXB")
-                .map((c) => (
-                  <option key={c} value={c}>
-                    {c} · {AIRPORTS[c].city}
-                  </option>
-                ))}
+            <select value={dest} onChange={(e) => setDest(e.target.value)} className={select} aria-label="Receiving site">
+              <option value="all">All sites</option>
+              {Object.values(SITES).map((st) => (
+                <option key={st.code} value={st.code}>
+                  {st.name} ({st.code})
+                </option>
+              ))}
             </select>
             <button onClick={exportCsv} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white hover:bg-slate-800">
               <Download className="h-3.5 w-3.5" /> Export
@@ -329,7 +335,7 @@ export default function ReportsPage() {
         <>
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
             <ChartCard
-              title="Chargeable weight per month"
+              title="Inbound weight per month"
               subtitle="Kilograms shipped, by month of departure"
               table={months.map((m) => ({ label: m.label, value: m.kg, display: `${m.kg.toLocaleString("en-GB")} kg`, sub: `${m.count} shipments` }))}
             >
@@ -344,13 +350,20 @@ export default function ReportsPage() {
             </ChartCard>
           </div>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div className="mt-6 grid gap-6 lg:grid-cols-3">
             <ChartCard
-              title="Volume by destination"
-              subtitle="Chargeable weight per destination airport"
-              table={lanes.map((l) => ({ label: `${l.dest} · ${AIRPORTS[l.dest].city}`, value: l.kg, display: `${l.kg.toLocaleString("en-GB")} kg`, sub: `${l.count} shipments` }))}
+              title="Volume by site"
+              subtitle="Chargeable weight received per site"
+              table={lanes.map((l) => ({ label: `${SITES[l.dest].name} (${l.dest})`, value: l.kg, display: `${l.kg.toLocaleString("en-GB")} kg`, sub: `${l.count} shipments` }))}
             >
-              <BarList data={lanes.map((l) => ({ label: `${l.dest} · ${AIRPORTS[l.dest].city}`, value: l.kg, display: `${l.kg.toLocaleString("en-GB")} kg`, sub: `${l.count} shp` }))} />
+              <BarList data={lanes.map((l) => ({ label: `${SITES[l.dest].name} (${l.dest})`, value: l.kg, display: `${l.kg.toLocaleString("en-GB")} kg`, sub: `${l.count} shp` }))} />
+            </ChartCard>
+            <ChartCard
+              title="Volume by supplier"
+              subtitle="Chargeable weight shipped by each supplier"
+              table={suppliers.map((x) => ({ label: supplierName(x.sp), value: x.kg, display: `${x.kg.toLocaleString("en-GB")} kg`, sub: `${x.count} shipments` }))}
+            >
+              <BarList data={suppliers.map((x) => ({ label: supplierName(x.sp), value: x.kg, display: `${x.kg.toLocaleString("en-GB")} kg`, sub: `${x.count} shp` }))} />
             </ChartCard>
             <ChartCard title="Arrival punctuality" subtitle="Completed shipments by arrival delay vs. ETA" table={delayBuckets}>
               <BarList data={delayBuckets} />
@@ -360,7 +373,7 @@ export default function ReportsPage() {
           <div className="mt-6 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
             <div className="border-b border-slate-100 p-5">
               <h3 className="text-[15px] font-semibold text-slate-900">Lane performance</h3>
-              <p className="text-xs text-slate-500">Amsterdam (AMS) to each destination</p>
+              <p className="text-xs text-slate-500">Airflo Amsterdam (AMS) to each of your sites</p>
             </div>
             <div className="scroll-thin overflow-x-auto">
               <table className="w-full min-w-[720px] text-sm">
@@ -379,7 +392,7 @@ export default function ReportsPage() {
                   {lanes.map((l) => (
                     <tr key={l.dest} className="hover:bg-slate-50">
                       <td className="px-5 py-3 font-semibold text-slate-800">
-                        AMS → {l.dest} <span className="font-normal text-slate-400">{AIRPORTS[l.dest].city}</span>
+                        AMS → {l.dest} <span className="font-normal text-slate-400">{SITES[l.dest].name}</span>
                       </td>
                       <td className="px-5 py-3 text-right tabular-nums">{l.count}</td>
                       <td className="px-5 py-3 text-right tabular-nums">{l.kg.toLocaleString("en-GB")}</td>

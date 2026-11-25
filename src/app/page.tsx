@@ -18,7 +18,6 @@ import {
   PlaneLanding,
   PlaneTakeoff,
   Radio,
-  RefreshCw,
   Search,
   ShieldCheck,
   TriangleAlert,
@@ -26,44 +25,45 @@ import {
   Zap,
 } from "lucide-react";
 import RouteMap from "@/components/RouteMap";
-import { SHIPMENTS } from "@/lib/data";
+import { SHIPMENTS, SITES, arrivalAt, formatTime, relative, supplierName } from "@/lib/data";
 
 const DEMO = SHIPMENTS[0];
+const DEMO_SITE = SITES[DEMO.destination];
+const DEMO_ETA = formatTime(arrivalAt(DEMO), DEMO.destination);
+const DEMO_ETA_TIME = formatTime(arrivalAt(DEMO), DEMO.destination, { date: false });
 
 const FEATURES = [
-  { I: Radio, h: "Live flight tracking", p: "Actual departure and arrival times straight from live flight data — including transit stops and ETA changes." },
-  { I: Truck, h: "Pick-up to arrival", p: "Every milestone in one timeline: pick-up at your door, loaded on aircraft, departed, in transit and landed." },
-  { I: Bell, h: "Proactive alerts", p: "Get an email or WhatsApp message the moment something happens. Delays and offloads are flagged instantly." },
-  { I: FileText, h: "All documents", p: "Air Waybills, invoices, packing lists and proof of delivery — always available, never lost in an inbox." },
-  { I: BarChart3, h: "Performance reports", p: "Volumes, on-time performance and lane insights you can export and share with your own customers." },
-  { I: Globe2, h: "Built for every market", p: "Available in English and Spanish, with local times at every airport — ready for Latin America." },
+  { I: Bell, h: "Arrival alerts", p: "Know the moment cargo departs Amsterdam and when it lands at your airport — by email or WhatsApp, in your local time." },
+  { I: Radio, h: "Live flight tracking", p: "Actual departure and arrival times from live flight data, including transit stops, delays and ETA changes." },
+  { I: FileText, h: "Customs-ready documents", p: "AWB, commercial invoice, packing list and certificate of origin ready before landing — sent to your broker automatically." },
+  { I: Truck, h: "All suppliers, one view", p: "Every shipment from every European supplier that ships through Airflo, from collection at their door to your runway." },
+  { I: BarChart3, h: "Reports per site & supplier", p: "Inbound volumes, punctuality and lead times for each receiving site and each supplier." },
+  { I: Globe2, h: "Your language, your time zone", p: "English and Español, with every time shown in the local time of the airport — no more converting from Amsterdam time." },
 ];
 
 const MILESTONES = [
-  { I: Truck, label: "Picked up", time: "07:10", src: "Trucking partner" },
-  { I: PackageCheck, label: "Loaded on aircraft", time: "17:42", src: "Airline handling" },
-  { I: PlaneTakeoff, label: "Departed AMS", time: "20:34", src: "Live flight data" },
-  { I: RefreshCw, label: "Transit hub", time: "—", src: "Live flight data" },
-  { I: PlaneLanding, label: "Arrived HKG", time: "21:45", src: "Live flight data" },
+  { I: Truck, label: `Collected from ${supplierName(DEMO.shipper)}`, time: formatTime(DEMO.milestones[0].actual, "AMS", { date: false }), src: "Trucking partner" },
+  { I: PackageCheck, label: "Loaded on aircraft", time: formatTime(DEMO.milestones[1].actual, "AMS", { date: false }), src: "Airline handling" },
+  { I: PlaneTakeoff, label: `Departed Amsterdam · ${DEMO.flights[0]}`, time: formatTime(DEMO.milestones[2].actual, "AMS", { date: false }), src: "Live flight data" },
+  { I: PlaneLanding, label: `Lands in ${DEMO_SITE.name}`, time: DEMO_ETA_TIME, src: "Live flight data · ETA" },
+  { I: FileText, label: "Arrival notice to your broker", time: "auto", src: DEMO_SITE.broker },
 ];
 
 const FAQ = [
-  { q: "Who can use the Airflo portal?", a: "Every Airflo customer. Request access with your company details or a recent AWB number and we'll send you an invitation, usually within one business day." },
+  { q: "Who can use the Airflo portal?", a: "Every company that receives air freight through Airflo — whether you booked it yourself or your European supplier did. Request access with a recent AWB or your supplier's name and we'll link all your shipments." },
   { q: "Where does the tracking data come from?", a: "We combine our own booking system with live flight data and confirmations from our trucking and airline handling partners. Each milestone shows its source so you know how it was captured." },
+  { q: "Can my customs broker get the documents?", a: "Yes. Add your broker per receiving site and Airflo sends the arrival notice, AWB, invoice and packing list automatically when the flight lands." },
   { q: "What happens if my shipment is offloaded?", a: "You'll see it in the portal immediately and get a notification with the new flight and ETA. The old flight number is kept for reference." },
-  { q: "Can my colleagues or my own customers follow shipments?", a: "Yes. Invite colleagues to your company account, add extra recipients for automatic updates, or share a public tracking link for a single AWB." },
-  { q: "Does it cost extra?", a: "No. Track & trace is included for all Airflo customers." },
+  { q: "Does it cost extra?", a: "No. Track & trace is included for all Airflo customers and consignees." },
 ];
 
 const DESTINATIONS = [
-  { code: "HKG", city: "Hong Kong" },
-  { code: "PVG", city: "Shanghai" },
-  { code: "SIN", city: "Singapore" },
-  { code: "DXB", city: "Dubai" },
-  { code: "JFK", city: "New York" },
-  { code: "MEX", city: "Mexico City", new: true },
-  { code: "BOG", city: "Bogotá", new: true },
-  { code: "GRU", city: "São Paulo", new: true },
+  { code: "GRU", city: "São Paulo" },
+  { code: "MEX", city: "Mexico City" },
+  { code: "BOG", city: "Bogotá" },
+  { code: "SCL", city: "Santiago", new: true },
+  { code: "LIM", city: "Lima", soon: true },
+  { code: "EZE", city: "Buenos Aires", soon: true },
 ];
 
 export default function LandingPage() {
@@ -79,15 +79,15 @@ export default function LandingPage() {
         <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-14 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:pt-20">
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-100">
-              <Zap className="h-3.5 w-3.5" /> New · Real-time shipment visibility
+              <Zap className="h-3.5 w-3.5" /> For importers receiving cargo via Airflo
             </span>
             <h1 className="mt-5 text-4xl font-semibold leading-[1.1] tracking-tight text-slate-900 sm:text-5xl">
-              Your air cargo,
+              Know exactly when
               <br />
-              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">visible every step.</span>
+              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">your cargo lands.</span>
             </h1>
             <p className="mt-5 max-w-lg text-base text-slate-600 sm:text-lg">
-              Follow every Airflo shipment from pick-up to landing — live flight times, automatic updates and all your documents in one portal. No more calls or emails to ask &ldquo;where is my cargo?&rdquo;
+              Receiving air freight from Europe? Follow every shipment from your supplier&apos;s door to your local airport — live flight times, arrival alerts and customs-ready documents in one portal. No more emails asking &ldquo;where is my cargo?&rdquo;
             </p>
 
             <form
@@ -118,7 +118,7 @@ export default function LandingPage() {
               </Link>
             </div>
             <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-500">
-              {["Included for all customers", "Email & WhatsApp alerts", "English & Español"].map((x) => (
+              {["Included at no extra cost", "Email & WhatsApp alerts", "English & Español"].map((x) => (
                 <span key={x} className="inline-flex items-center gap-1.5">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> {x}
                 </span>
@@ -138,7 +138,7 @@ export default function LandingPage() {
               <div className="flex items-center justify-between px-5 pt-4">
                 <div>
                   <div className="text-sm font-semibold text-slate-900">Shipment {DEMO.id}</div>
-                  <div className="font-mono text-[11px] text-slate-500">AWB {DEMO.awb} · KL 887</div>
+                  <div className="font-mono text-[11px] text-slate-500">AWB {DEMO.awb} · {DEMO.flights[0]} · from {supplierName(DEMO.shipper)}</div>
                 </div>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 ring-1 ring-blue-200">
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-500" /> In flight
@@ -149,7 +149,7 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="absolute -left-4 bottom-10 hidden w-64 rounded-2xl bg-white p-3.5 shadow-xl ring-1 ring-slate-200 sm:block lg:-left-10">
+            <div className="absolute -bottom-10 -left-4 hidden w-64 rounded-2xl bg-white p-3.5 shadow-xl ring-1 ring-slate-200 sm:block lg:-left-10">
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-900">
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-emerald-50 text-emerald-600">
                   <MessageCircle className="h-3.5 w-3.5" />
@@ -157,13 +157,13 @@ export default function LandingPage() {
                 WhatsApp · Airflo
                 <span className="ml-auto text-[10px] font-normal text-slate-400">now</span>
               </div>
-              <p className="mt-2 text-xs text-slate-600">✈️ KL 887 departed Amsterdam at 20:34 with 42 pcs on board. ETA Hong Kong 21:45.</p>
+              <p className="mt-2 text-xs text-slate-600">✈️ {DEMO.flights[0]} with your {DEMO.pieces} pcs from {supplierName(DEMO.shipper)} lands in {DEMO_SITE.name} at {DEMO_ETA_TIME}. Documents are ready for your broker.</p>
             </div>
             <div className="absolute -right-3 -top-5 hidden rounded-2xl bg-white px-4 py-3 shadow-xl ring-1 ring-slate-200 sm:block">
-              <div className="text-[10px] font-medium uppercase tracking-wide text-slate-400">ETA Hong Kong</div>
-              <div className="text-lg font-semibold text-slate-900">25 Nov 21:45</div>
+              <div className="text-[10px] font-medium uppercase tracking-wide text-slate-400">ETA {DEMO_SITE.name}</div>
+              <div className="text-lg font-semibold text-slate-900">{DEMO_ETA}</div>
               <div className="flex items-center gap-1 text-[11px] text-slate-500">
-                <Clock className="h-3 w-3" /> lands in 3h 45m
+                <Clock className="h-3 w-3" /> lands {relative(arrivalAt(DEMO))}
               </div>
             </div>
           </div>
@@ -191,8 +191,8 @@ export default function LandingPage() {
       <section id="features" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-20 sm:px-6">
         <div className="max-w-2xl">
           <div className="text-sm font-semibold text-blue-600">Features</div>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">Everything you need to know about your shipment, in one place.</h2>
-          <p className="mt-3 text-slate-600">Built with our export team around the questions customers ask most.</p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">Everything you need before your cargo lands.</h2>
+          <p className="mt-3 text-slate-600">Built around the questions importers ask our team most: when does it land, is it on time, and are the documents ready?</p>
         </div>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map(({ I, h, p }) => (
@@ -213,7 +213,7 @@ export default function LandingPage() {
           <div className="grid gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">
             <div>
               <div className="text-sm font-semibold text-blue-300">Milestones</div>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight">From your loading dock to the destination runway.</h2>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight">From your supplier&apos;s door to your runway.</h2>
               <p className="mt-3 text-slate-300">Every update shows planned versus actual time and where the information came from — so you always know how reliable it is.</p>
               <div className="mt-6 flex items-start gap-3 rounded-2xl bg-rose-500/10 p-4 ring-1 ring-rose-400/20">
                 <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-rose-300" />
@@ -226,7 +226,7 @@ export default function LandingPage() {
             <ol className="relative space-y-3">
               {MILESTONES.map(({ I, label, time, src }, i) => (
                 <li key={label} className="flex items-center gap-4 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
-                  <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${i < 3 ? "bg-blue-500 text-white" : i === 4 ? "bg-white/10 text-blue-200 ring-2 ring-blue-400" : "bg-white/10 text-slate-400"}`}>
+                  <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${i < 3 ? "bg-blue-500 text-white" : i === 3 ? "bg-white/10 text-blue-200 ring-2 ring-blue-400" : "bg-white/10 text-slate-400"}`}>
                     <I className="h-4 w-4" />
                   </span>
                   <div className="flex-1">
@@ -249,9 +249,9 @@ export default function LandingPage() {
         </div>
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {[
-            { n: "1", h: "Request access", p: "Tell us your company and a recent AWB. We link your account to all your shipments with Airflo.", I: ShieldCheck },
-            { n: "2", h: "Log in & invite your team", p: "See every active and past shipment immediately. Invite colleagues, your warehouse or your customers.", I: PackageCheck },
-            { n: "3", h: "Get updates automatically", p: "Choose email and/or WhatsApp per event. We'll notify you at pick-up, departure, arrival and on any delay.", I: Bell },
+            { n: "1", h: "Request access", p: "Share a recent AWB or the supplier that ships to you. We link every inbound Airflo shipment to your account.", I: ShieldCheck },
+            { n: "2", h: "Add your sites & broker", p: "Set up your receiving sites and customs brokers, and invite colleagues at each warehouse.", I: PackageCheck },
+            { n: "3", h: "Get updates automatically", p: "Choose email and/or WhatsApp per event. We notify you at departure, on any delay and when your cargo lands.", I: Bell },
           ].map(({ n, h, p, I }) => (
             <div key={n} className="relative rounded-2xl bg-white p-6 ring-1 ring-slate-200">
               <span className="absolute right-5 top-5 text-5xl font-semibold text-slate-100">{n}</span>
@@ -273,8 +273,8 @@ export default function LandingPage() {
               <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
                 <Plane className="h-3.5 w-3.5" /> From Amsterdam Schiphol
               </div>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight">Now connecting Europe with Latin America</h2>
-              <p className="mt-3 text-blue-100">Same visibility on every lane — with the portal fully available in Spanish for our customers and partners in Mexico, Colombia and Brazil.</p>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight">Built for importers in Latin America</h2>
+              <p className="mt-3 text-blue-100">Direct and connecting flights from Amsterdam to your airport, with the portal in Spanish and every time shown in your local time zone.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {DESTINATIONS.map((d) => (
@@ -282,6 +282,7 @@ export default function LandingPage() {
                   <span className="font-semibold">{d.code}</span>
                   <span className="text-sm text-blue-100">{d.city}</span>
                   {d.new && <span className="rounded-full bg-emerald-400 px-1.5 py-0.5 text-[10px] font-bold text-emerald-950">NEW</span>}
+                  {d.soon && <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-bold text-white">SOON</span>}
                 </span>
               ))}
             </div>
@@ -313,7 +314,7 @@ export default function LandingPage() {
         <div className="flex flex-col items-center justify-between gap-6 rounded-3xl bg-white p-8 text-center ring-1 ring-slate-200 sm:p-12 lg:flex-row lg:text-left">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Stop chasing updates. Start seeing them.</h2>
-            <p className="mt-2 text-slate-600">Already shipping with Airflo? Get portal access today — it&apos;s included.</p>
+            <p className="mt-2 text-slate-600">Receiving cargo via Airflo? Get portal access today — it&apos;s included.</p>
           </div>
           <div className="flex shrink-0 flex-wrap justify-center gap-3">
             <Link href="/request-access" className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700">

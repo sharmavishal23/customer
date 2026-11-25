@@ -1,16 +1,70 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, Globe, KeyRound, Mail, MapPin, MessageCircle, Monitor, Pencil, Phone, ShieldCheck, UserPlus, Users } from "lucide-react";
+import { Building2, Globe, KeyRound, Mail, MapPin, MessageCircle, Monitor, Pencil, Phone, Plus, ShieldCheck, UserPlus, Users, Warehouse } from "lucide-react";
 import { PAGE, PageHeader } from "@/components/AppShell";
 import { cx } from "@/components/shipment";
 import { useStore, type NotifyEvent } from "@/lib/store";
+import { SITES } from "@/lib/data";
+import { useState } from "react";
+
+function SitesSection() {
+  const [auto, setAuto] = useState<Record<string, boolean>>({ GRU: true, MEX: true, BOG: true, SCL: false });
+  return (
+    <section className="mt-6 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-5">
+        <div>
+          <h3 className="flex items-center gap-2 text-[15px] font-semibold text-slate-900">
+            <Warehouse className="h-4 w-4 text-slate-400" /> Receiving sites & customs brokers
+          </h3>
+          <p className="text-xs text-slate-500">Where your shipments arrive, and who clears them. Airflo can send arrival documents to your broker automatically.</p>
+        </div>
+        <button className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">
+          <Plus className="h-3.5 w-3.5" /> Add site
+        </button>
+      </div>
+      <div className="grid divide-y divide-slate-100 md:grid-cols-2 md:divide-x md:divide-y-0 xl:grid-cols-4">
+        {Object.values(SITES).map((st) => (
+          <div key={st.code} className="flex flex-col gap-3 p-5">
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+                <MapPin className="h-4 w-4 text-blue-600" /> {st.name}
+              </span>
+              <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-600">{st.code}</span>
+            </div>
+            <div className="text-xs text-slate-500">
+              <div className="font-medium text-slate-700">{st.company}</div>
+              {st.address}
+            </div>
+            <div className="rounded-xl bg-slate-50 p-3 text-xs">
+              <div className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Customs broker</div>
+              <div className="mt-0.5 font-medium text-slate-800">{st.broker}</div>
+              <div className="truncate text-slate-500">{st.brokerEmail}</div>
+            </div>
+            <label className="mt-auto flex cursor-pointer items-center justify-between gap-2 text-xs text-slate-600">
+              Auto-send arrival documents
+              <button
+                role="switch"
+                aria-checked={auto[st.code]}
+                onClick={() => setAuto({ ...auto, [st.code]: !auto[st.code] })}
+                className={cx("relative h-5 w-9 shrink-0 rounded-full transition", auto[st.code] ? "bg-blue-600" : "bg-slate-300")}
+              >
+                <span className={cx("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all", auto[st.code] ? "left-[18px]" : "left-0.5")} />
+              </button>
+            </label>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 const TEAM = [
-  { name: "Sanne de Vries", email: "sanne.devries@nordhaven.example", role: "Admin", last: "Active now" },
-  { name: "Joost Bakker", email: "joost.bakker@nordhaven.example", role: "Member", last: "2 hours ago" },
-  { name: "Lucía Herrera", email: "lucia.herrera@nordhaven.example", role: "Member", last: "Yesterday" },
-  { name: "Warehouse Rotterdam", email: "warehouse@nordhaven.example", role: "Viewer", last: "3 days ago" },
+  { name: "Sanne de Vries", email: "sanne.devries@nordhaven.example", role: "Admin", last: "Active now", site: "All sites" },
+  { name: "Mariana Costa", email: "mariana.costa@nordhaven.example", role: "Member", last: "2 hours ago", site: "São Paulo" },
+  { name: "Diego Ramírez", email: "diego.ramirez@nordhaven.example", role: "Member", last: "Yesterday", site: "Mexico City" },
+  { name: "Lucía Herrera", email: "lucia.herrera@nordhaven.example", role: "Member", last: "Yesterday", site: "Bogotá" },
+  { name: "Almacén Santiago", email: "almacen.santiago@nordhaven.example", role: "Viewer", last: "3 days ago", site: "Santiago" },
 ];
 
 const AIRFLO = [
@@ -54,7 +108,7 @@ export default function ProfilePage() {
     <main className={PAGE}>
       <PageHeader
         title={t("nav_profile")}
-        subtitle="Your account, company details and the people who can see your shipments."
+        subtitle="Your account, receiving sites, customs brokers and the people who can see your shipments."
         actions={
           <Link href="/profile/edit" className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">
             <Pencil className="h-3.5 w-3.5" /> {t("edit_profile")}
@@ -103,8 +157,8 @@ export default function ProfilePage() {
             <Field label="Company name" value={profile.company} icon={Building2} />
             <Field label="Address" value={`${profile.street}, ${profile.postcode} ${profile.city}, ${profile.country}`} icon={MapPin} />
             <div className="grid grid-cols-2 gap-4">
-              <Field label="VAT number" value={profile.vat} />
-              <Field label="EORI" value={profile.eori} />
+              <Field label="Tax ID" value={profile.vat} />
+              <Field label="Importer registration" value={profile.eori} />
             </div>
             <Field label="Billing email" value={profile.billingEmail} icon={Mail} />
           </dl>
@@ -145,6 +199,8 @@ export default function ProfilePage() {
         </section>
       </div>
 
+      <SitesSection />
+
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <section className="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200 lg:col-span-2">
           <div className="flex items-center justify-between border-b border-slate-100 p-5">
@@ -170,7 +226,7 @@ export default function ProfilePage() {
                   </div>
                   <div className="truncate text-xs text-slate-500">{i === 0 ? profile.email : m.email}</div>
                 </div>
-                <span className="hidden text-xs text-slate-400 sm:block">{m.last}</span>
+                <span className="hidden text-xs text-slate-400 sm:block">{m.site} · {m.last}</span>
                 <span
                   className={cx(
                     "rounded-full px-2 py-0.5 text-[11px] font-semibold",

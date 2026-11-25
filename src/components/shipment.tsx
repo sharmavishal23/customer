@@ -12,6 +12,7 @@ import {
   Download,
   Eye,
   FileCheck2,
+  MapPin,
   FileText,
   Mail,
   MessageCircle,
@@ -34,6 +35,8 @@ import {
 import RouteMap from "@/components/RouteMap";
 import {
   AIRPORTS,
+  SITES,
+  supplierName,
   delayMinutes,
   eta,
   etd,
@@ -71,10 +74,10 @@ export const SOURCE_ICON: Record<Source, typeof Truck> = {
 
 export const DOC_ICON: Record<Doc["kind"], typeof FileText> = {
   awb: FileText,
-  booking: ClipboardList,
   invoice: Receipt,
   packing: Package,
-  pod: FileCheck2,
+  origin: FileCheck2,
+  arrival: PlaneLanding,
 };
 
 export const cx = (...c: (string | false | undefined | null)[]) => c.filter(Boolean).join(" ");
@@ -208,6 +211,9 @@ export function ShipmentList({
                   </div>
                   <StatusPill status={s.status} t={t} />
                 </div>
+                <div className="mt-1 truncate text-xs text-slate-500">
+                  {t("from")} <span className="font-medium text-slate-700">{supplierName(s.shipper)}</span>
+                </div>
 
                 <div className="mt-2.5 flex items-center gap-2 text-sm">
                   <span className="font-semibold text-slate-800">{s.origin}</span>
@@ -311,6 +317,15 @@ export function ShipmentHero({ s, t }: { s: Shipment; t: (k: Key) => string }) {
             <span className="h-1 w-1 rounded-full bg-slate-300" />
             <span>
               {t("reference")} <span className="font-medium text-slate-700">{s.reference}</span>
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
+              <Building2 className="h-3.5 w-3.5 text-slate-400" /> {t("from")} {supplierName(s.shipper)}
+            </span>
+            <ArrowRight className="h-3.5 w-3.5 text-slate-300" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 font-medium text-blue-700">
+              <MapPin className="h-3.5 w-3.5" /> {t("your_site")} {SITES[s.destination]?.name ?? AIRPORTS[s.destination].city}
             </span>
           </div>
         </div>
@@ -471,6 +486,27 @@ export function Timeline({ s, t }: { s: Shipment; t: (k: Key) => string }) {
           );
         })}
       </ol>
+      <NextStep s={s} t={t} />
+    </div>
+  );
+}
+
+/** Informational note about what happens after arrival (not a tracked milestone). */
+function NextStep({ s, t }: { s: Shipment; t: (k: Key) => string }) {
+  const site = SITES[s.destination];
+  if (!site) return null;
+  const arrived = s.status === "arrived";
+  return (
+    <div className={cx("mt-5 flex gap-3 rounded-xl p-3.5 text-sm ring-1", arrived ? "bg-emerald-50 text-emerald-900 ring-emerald-100" : "bg-slate-50 text-slate-700 ring-slate-100")}>
+      <FileCheck2 className={cx("mt-0.5 h-4 w-4 shrink-0", arrived ? "text-emerald-600" : "text-slate-400")} />
+      <div>
+        <div className="font-semibold">{arrived ? t("next_clearance") : t("after_arrival")}</div>
+        <p className={cx("mt-0.5 text-xs", arrived ? "text-emerald-800" : "text-slate-500")}>
+          {arrived
+            ? `Arrival notice, AWB and invoice were sent to your customs broker ${site.broker} at ${formatTime(eta(s)?.actual, s.destination)}.`
+            : `Airflo will send the arrival notice and documents to your customs broker ${site.broker} as soon as the flight lands.`}
+        </p>
+      </div>
     </div>
   );
 }
@@ -521,8 +557,8 @@ export function Details({ s, t }: { s: Shipment; t: (k: Key) => string }) {
         </button>
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {party(t("shipper"), s.shipper)}
-        {party(t("consignee"), s.consignee)}
+        {party(`${t("shipper")} · ${t("supplier")}`, s.shipper)}
+        {party(`${t("consignee")} · ${t("you")}`, s.consignee)}
       </div>
       <div className="mt-4 grid grid-cols-2 gap-4">
         {stat(Package, t("pieces"), `${s.pieces} ${t("pcs")}`)}
@@ -664,11 +700,11 @@ export function Notifications({ s, t }: { s: Shipment; t: (k: Key) => string }) 
       const city = AIRPORTS[m.at].city;
       const time = formatTime(m.actual, m.at, { date: false });
       const text: Record<string, string> = {
-        pickup: `Shipment ${s.id} was picked up at ${time}. Next: delivery to the airline at ${city}.`,
+        pickup: `Collected from ${supplierName(s.shipper)} at ${time}. Next: delivery to the airline at ${city}.`,
         loaded: `Your freight is loaded on ${s.flights[0]} at ${city}.`,
         departed: `${s.flights[0]} departed ${city} at ${time} with ${s.pieces} pcs on board.`,
         transit: `Arrived at ${city} (${time}). Connecting to ${s.flights[1]}.`,
-        arrived: `${s.flights[s.flights.length - 1]} landed in ${city} at ${time}.`,
+        arrived: `${s.flights[s.flights.length - 1]} landed in ${city} at ${time}. Arrival notice sent to your customs broker.`,
         offload: `Heads-up: shipment ${s.id} was moved to ${s.flights[0]}. New ETA has been updated.`,
       };
       return { m, text: text[m.key], exception: m.key === "offload" };

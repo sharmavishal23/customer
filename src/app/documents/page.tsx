@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Check, Download, Eye, Search, Upload } from "lucide-react";
+import { Check, Download, Eye, Search, Send } from "lucide-react";
 import { PAGE, PageHeader } from "@/components/AppShell";
 import { DOC_ICON, DocPreview, cx } from "@/components/shipment";
-import { ALL_SHIPMENTS, formatTime, type Doc, type Shipment } from "@/lib/data";
+import { ALL_SHIPMENTS, SITES, formatTime, supplierName, type Doc, type Shipment } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
 type Row = { doc: Doc; s: Shipment; key: string };
@@ -13,18 +13,18 @@ type Row = { doc: Doc; s: Shipment; key: string };
 const TYPES: { key: Doc["kind"] | "all"; label: string }[] = [
   { key: "all", label: "All documents" },
   { key: "awb", label: "Air Waybills" },
-  { key: "booking", label: "Booking confirmations" },
   { key: "invoice", label: "Commercial invoices" },
   { key: "packing", label: "Packing lists" },
-  { key: "pod", label: "Proofs of delivery" },
+  { key: "origin", label: "Certificates of origin" },
+  { key: "arrival", label: "Arrival notices" },
 ];
 
 const TONE: Record<Doc["kind"], string> = {
   awb: "bg-blue-50 text-blue-600",
-  booking: "bg-violet-50 text-violet-600",
   invoice: "bg-amber-50 text-amber-600",
   packing: "bg-slate-100 text-slate-600",
-  pod: "bg-emerald-50 text-emerald-600",
+  origin: "bg-violet-50 text-violet-600",
+  arrival: "bg-emerald-50 text-emerald-600",
 };
 
 function downloadDoc(r: Row) {
@@ -60,6 +60,7 @@ export default function DocumentsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<Row | null>(null);
   const [limit, setLimit] = useState(30);
+  const [toast, setToast] = useState("");
 
   const all: Row[] = useMemo(
     () => ALL_SHIPMENTS.flatMap((s) => s.documents.map((doc) => ({ doc, s, key: `${s.id}-${doc.kind}` }))).sort((a, b) => +new Date(b.doc.date) - +new Date(a.doc.date)),
@@ -71,7 +72,7 @@ export default function DocumentsPage() {
     return all.filter((r) => {
       if (type !== "all" && r.doc.kind !== type) return false;
       if (!qq) return true;
-      return [r.s.id, r.s.awb, r.s.reference, r.s.consignee, r.doc.name, r.s.destination].join(" ").toLowerCase().replace(/[\s-]/g, "").includes(qq);
+      return [r.s.id, r.s.awb, r.s.reference, r.s.shipper, r.s.consignee, r.doc.name, r.s.destination].join(" ").toLowerCase().replace(/[\s-]/g, "").includes(qq);
     });
   }, [all, type, q]);
 
@@ -90,11 +91,21 @@ export default function DocumentsPage() {
     <main className={PAGE}>
       <PageHeader
         title={t("documents")}
-        subtitle="All shipping documents in one place — no more searching through email."
+        subtitle="Everything your customs broker needs, in one place — no more searching through email."
         actions={
           <>
-            <button className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">
-              <Upload className="h-3.5 w-3.5" /> Upload document
+            <button
+              disabled={selected.size === 0}
+              onClick={() => {
+                const rows = all.filter((r) => selected.has(r.key));
+                const brokers = [...new Set(rows.map((r) => SITES[r.s.destination]?.broker).filter(Boolean))];
+                setToast(`${rows.length} document${rows.length > 1 ? "s" : ""} sent to ${brokers.join(" & ")}`);
+                setSelected(new Set());
+                setTimeout(() => setToast(""), 3000);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Send className="h-3.5 w-3.5" /> Send to customs broker
             </button>
             <button
               disabled={selected.size === 0}
@@ -136,7 +147,7 @@ export default function DocumentsPage() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search by AWB, shipment, reference…"
+              placeholder="Search by AWB, shipment, supplier, reference…"
               className="h-9 w-full rounded-lg bg-slate-50 pl-9 pr-3 text-sm outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -190,6 +201,7 @@ export default function DocumentsPage() {
                     {r.s.id}
                   </Link>
                   <div className="font-mono text-[11px] text-slate-400">{r.s.awb}</div>
+                  <div className="truncate text-[11px] text-slate-400">{supplierName(r.s.shipper)}</div>
                 </div>
                 <div className="w-28 text-sm font-medium text-slate-700">
                   {r.s.origin} → {r.s.destination}
@@ -215,6 +227,11 @@ export default function DocumentsPage() {
         )}
       </div>
 
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-xl">
+          <Check className="h-4 w-4 text-emerald-400" /> {toast}
+        </div>
+      )}
       {preview && <DocPreview doc={preview.doc} s={preview.s} onClose={() => setPreview(null)} />}
     </main>
   );

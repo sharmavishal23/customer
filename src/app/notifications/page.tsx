@@ -17,11 +17,11 @@ const FILTERS: { key: string; label: string; match: (n: Notification) => boolean
 ];
 
 const EVENTS: { key: NotifyEvent; label: string; desc: string }[] = [
-  { key: "pickup", label: "Pick-up confirmed", desc: "When the truck has collected your freight" },
+  { key: "pickup", label: "Pick-up confirmed", desc: "When the truck has collected your goods at the supplier" },
   { key: "departure", label: "Flight departure", desc: "Loaded on aircraft and actual departure time" },
-  { key: "arrival", label: "Arrival at destination", desc: "Actual landing time, incl. transit hubs" },
+  { key: "arrival", label: "Arrival at destination", desc: "Actual landing time at your airport, incl. transit hubs" },
   { key: "exception", label: "Delays & offloads", desc: "ETA changes, offloads and rebookings" },
-  { key: "documents", label: "New documents", desc: "AWB, invoices and proof of delivery" },
+  { key: "documents", label: "New documents", desc: "AWB, invoice, packing list, certificate of origin, arrival notice" },
 ];
 
 function dayBucket(iso: string) {
@@ -279,7 +279,7 @@ export default function NotificationsPage() {
 
             <div className="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
               <h3 className="text-sm font-semibold text-slate-900">Also send updates to</h3>
-              <p className="text-xs text-slate-500">Colleagues, your warehouse or your customer.</p>
+              <p className="text-xs text-slate-500">Colleagues, your warehouse or your customs broker.</p>
               <ul className="mt-3 space-y-2">
                 {profile.extraRecipients.map((r) => (
                   <li key={r} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">

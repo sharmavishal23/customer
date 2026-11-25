@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { geoInterpolate, geoMercator, geoPath, geoDistance } from "d3-geo";
 import { feature } from "topojson-client";
 import type { Topology, GeometryCollection } from "topojson-specification";
@@ -8,8 +8,6 @@ import type { FeatureCollection, Geometry } from "geojson";
 import world from "world-atlas/countries-110m.json";
 import { AIRPORTS, type Shipment, routeProgress } from "@/lib/data";
 
-const W = 800;
-const H = 340;
 
 const land = feature(
   world as unknown as Topology,
@@ -17,6 +15,21 @@ const land = feature(
 ) as unknown as FeatureCollection<Geometry>;
 
 export default function RouteMap({ shipment }: { shipment: Shipment }) {
+  // Draw at the container's real pixel size so labels keep a constant size and nothing is cropped.
+  const ref = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ W: 800, H: 340 });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => {
+      const { width, height } = e.contentRect;
+      if (width > 0 && height > 0) setSize({ W: Math.round(width), H: Math.round(height) });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const { W, H } = size;
+
   const stops = [shipment.origin, shipment.via, shipment.destination].filter(Boolean) as string[];
   const coords = stops.map((c) => AIRPORTS[c].coords);
 
@@ -37,8 +50,8 @@ export default function RouteMap({ shipment }: { shipment: Shipment }) {
     }
     const projection = geoMercator().fitExtent(
       [
-        [24, 24],
-        [W - 24, H - 24],
+        [40, 48],
+        [W - 40, H - 28],
       ],
       { type: "MultiPoint", coordinates: [...frame, ...coords, ...extra] },
     );
@@ -80,12 +93,13 @@ export default function RouteMap({ shipment }: { shipment: Shipment }) {
       countries: land.features.map((f, i) => ({ d: path(f) ?? "", key: i })),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shipment.id]);
+  }, [shipment.id, W, H]);
 
   const showPlane = shipment.status === "in_flight" || shipment.status === "at_transit";
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice" className="h-full w-full" role="img" aria-label={`Route ${stops.join(" to ")}`}>
+    <div ref={ref} className="h-full w-full">
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="block h-full w-full" role="img" aria-label={`Route ${stops.join(" to ")}`}>
       <defs>
         <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#eef4fb" />
@@ -116,12 +130,16 @@ export default function RouteMap({ shipment }: { shipment: Shipment }) {
         const isEnd = i === stops.length - 1;
         const isVia = code === shipment.via;
         const reached = i === 0 || (isVia && model.progress >= 0.5) || (isEnd && model.progress >= 1);
-        const labelLeft = x > W * 0.7;
+        // Put the label on the side facing away from the rest of the route, but keep it inside the map.
+        const other = model.projection(AIRPORTS[i === 0 ? stops[stops.length - 1] : stops[0]].coords)!;
+        let labelLeft = other[0] > x;
+        if (labelLeft && x - 120 < 0) labelLeft = false;
+        if (!labelLeft && x + 120 > W) labelLeft = true;
         return (
           <g key={code}>
             {isEnd && shipment.status !== "arrived" && <circle cx={x} cy={y} r={6} fill="#2563eb" className="ping-soft" />}
             <circle cx={x} cy={y} r={isVia ? 4.5 : 6} fill={reached ? "#2563eb" : "#fff"} stroke="#2563eb" strokeWidth={2.5} />
-            <g transform={`translate(${labelLeft ? x - 12 : x + 12}, ${y - 34})`} filter="url(#shadow)">
+            <g transform={`translate(${labelLeft ? x - 12 : x + 12}, ${y - 34 < 4 ? y + 8 : y - 34})`} filter="url(#shadow)">
               <rect x={labelLeft ? -104 : 0} width={104} height={38} rx={8} fill="#fff" />
               <text x={labelLeft ? -94 : 10} y={16} fontSize={12} fontWeight={700} fill="#0f172a">
                 {code}
@@ -146,5 +164,6 @@ export default function RouteMap({ shipment }: { shipment: Shipment }) {
         </g>
       )}
     </svg>
+    </div>
   );
 }

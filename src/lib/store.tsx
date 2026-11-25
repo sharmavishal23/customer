@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { dict, type Key, type Lang } from "@/lib/i18n";
-import { ALL_SHIPMENTS, AIRPORTS, NOW, formatTime, type MilestoneKey, type Shipment } from "@/lib/data";
+import { ALL_SHIPMENTS, AIRPORTS, NOW, formatTime, supplierName, type MilestoneKey, type Shipment } from "@/lib/data";
 
 /* ------------------------------------------------------------------ */
 /* Profile                                                             */
@@ -38,21 +38,21 @@ export type Profile = {
 export const DEFAULT_PROFILE: Profile = {
   firstName: "Sanne",
   lastName: "de Vries",
-  role: "Logistics Manager",
+  role: "Regional Logistics Manager, Latin America",
   email: "sanne.devries@nordhaven.example",
-  phone: "+31 10 555 0142",
-  whatsapp: "+31 6 5555 0142",
+  phone: "+55 11 5555 0142",
+  whatsapp: "+55 11 95555 0142",
   language: "en",
-  timezone: "Europe/Amsterdam",
-  company: "Nordhaven Industrial Parts B.V.",
-  accountNo: "AF-100284",
-  vat: "NL 8123.45.678.B01",
-  eori: "NL812345678",
-  street: "Waalhaven Oostzijde 88",
-  postcode: "3087 BM",
-  city: "Rotterdam",
-  country: "Netherlands",
-  billingEmail: "accounts@nordhaven.example",
+  timezone: "America/Sao_Paulo",
+  company: "Nordhaven Latin America",
+  accountNo: "AF-200418",
+  vat: "CNPJ 12.345.678/0001-90",
+  eori: "RADAR 0042-8813",
+  street: "Av. Industrial 1450",
+  postcode: "07232-000",
+  city: "Guarulhos – SP",
+  country: "Brazil",
+  billingEmail: "contas-latam@nordhaven.example",
   notify: {
     pickup: { email: true, whatsapp: false, portal: true },
     departure: { email: true, whatsapp: true, portal: true },
@@ -62,7 +62,7 @@ export const DEFAULT_PROFILE: Profile = {
   },
   digest: "daily",
   quietHours: true,
-  extraRecipients: ["planning@nordhaven.example", "warehouse@nordhaven.example"],
+  extraRecipients: ["almacen.bogota@nordhaven.example", "operaciones@aduanas-andina.example"],
 };
 
 /* ------------------------------------------------------------------ */
@@ -93,11 +93,11 @@ function buildNotifications(): Notification[] {
       const city = AIRPORTS[m.at].city;
       const time = formatTime(m.actual, m.at, { date: false });
       const map: Record<MilestoneKey, [string, string, Notification["severity"]]> = {
-        pickup: [`Picked up · ${s.id}`, `Your shipment (${s.pieces} pcs) was collected at ${time}. Next: delivery to the airline at Amsterdam.`, "info"],
+        pickup: [`Collected · ${s.id}`, `${s.pieces} pcs collected from ${supplierName(s.shipper)} at ${time}. Next: delivery to the airline at Amsterdam.`, "info"],
         loaded: [`Loaded on aircraft · ${s.id}`, `Freight is loaded on ${s.flights[0]} at ${city}.`, "info"],
-        departed: [`Departed · ${s.flights[0]}`, `Shipment ${s.id} (${route(s)}) departed ${city} at ${time} local time.`, "info"],
+        departed: [`Departed · ${s.flights[0]}`, `Shipment ${s.id} from ${supplierName(s.shipper)} (${route(s)}) departed ${city} at ${time} local time.`, "info"],
         transit: [`At transit hub · ${s.id}`, `Arrived in ${city} at ${time}. Connecting to ${s.flights[1] ?? "next flight"}.`, "info"],
-        arrived: [`Arrived · ${s.id}`, `${s.flights[s.flights.length - 1]} landed in ${city} at ${time} local time.`, "success"],
+        arrived: [`Arrived · ${s.id}`, `${s.flights[s.flights.length - 1]} landed in ${city} at ${time} local time. Arrival notice sent to your customs broker.`, "success"],
         offload: [`Rebooked · ${s.id}`, m.note ?? "Shipment was moved to another flight.", "warning"],
       };
       const [title, body, severity] = map[m.key];
@@ -123,8 +123,8 @@ function buildNotifications(): Notification[] {
     type: "eta",
     shipmentId: "5006",
     awb: "074-12345675",
-    title: "ETA updated · 5006",
-    body: "Live flight data shows KL 887 arriving in Hong Kong at 21:45 local time (14 min later than scheduled).",
+    title: "On schedule · 5006",
+    body: "Live flight data: KL 791 is on track to land in São Paulo at 09:05 local time, despite a 14-min late departure.",
     at: "2026-11-25T09:40:00Z",
     severity: "warning",
   });
@@ -200,7 +200,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
     setSession(sess);
     setLangState(load<Lang>("airflo.lang", "en"));
-    setProfile({ ...DEFAULT_PROFILE, ...load<Partial<Profile>>("airflo.profile", {}) });
+    setProfile({ ...DEFAULT_PROFILE, ...load<Partial<Profile>>("airflo.profile.v2", {}) });
     setReadIds(new Set(load<string[]>("airflo.read", initiallyRead)));
     setReady(true);
   }, []);
@@ -242,14 +242,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const saveProfile = useCallback((p: Profile) => {
     setProfile(p);
-    save("airflo.profile", p);
+    save("airflo.profile.v2", p);
     setLangState(p.language);
     save("airflo.lang", p.language);
   }, []);
 
   const resetProfile = useCallback(() => {
     setProfile(DEFAULT_PROFILE);
-    save("airflo.profile", {});
+    save("airflo.profile.v2", {});
   }, []);
 
   const markRead = useCallback((ids: string[]) => {

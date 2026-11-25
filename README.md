@@ -1,7 +1,27 @@
-# Airflo — Customer Track & Trace Portal (UI prototype)
+# Airflo — Consignee Track & Trace Portal (UI prototype)
 
-Clickable Next.js prototype of a customer-facing track & trace portal, built for the commercial review.
+Clickable Next.js prototype of a track & trace portal for **consignees** (the companies receiving cargo that Airflo forwards from Amsterdam), built for the commercial review.
 All data is mock data (`src/lib/data.ts`); APIs (CargoWise, FlightRadar24, trucking updates) are to be wired in later.
+
+## Demo flow (≈10 minutes)
+
+Sample persona: **Sanne de Vries**, Regional Logistics Manager at **Nordhaven Latin America** — a consignee group receiving parts from European suppliers at four sites (São Paulo, Mexico City, Bogotá, Santiago).
+
+1. **Landing page** (`/`) — "Know exactly when your cargo lands." Point out arrival alerts, customs-ready documents, Latin America focus. Type `074-12345675` in the hero box → **public tracking** without login.
+2. **Log in** — click *Log in* → *Fill demo login* → *Log in* → *Fill code* → *Verify*. (Shows the two-step login a customer would get.)
+3. **Dashboard** — *Next arrivals* strip (local time at each site). Click through:
+   - **5006** in flight to São Paulo: live aircraft position, 14 min late departure but on time ETA.
+   - **5007** at transit hub São Paulo, connecting to Santiago.
+   - **5010** offloaded & rebooked: red alert, old flight struck through — "no action needed".
+4. **Shipment journey** — each milestone shows planned vs actual and its source (trucking partner, airline handling, live flight data). The box at the bottom explains the next step: documents go to the customs broker automatically.
+5. **Shipments** (`/shipments`) — filter by site or supplier, sort, export CSV. Open **5009** (arrived Mexico City) → arrival notice is in the documents.
+6. **Documents** — select a few → *Send to customs broker*.
+7. **Notifications** — bell dropdown, then the inbox; switch to *Preferences* to show email/WhatsApp per event, digest, quiet hours, extra recipients (e.g. the broker).
+8. **Reports** — inbound weight per month, on-time arrival vs 90% target, volume by site and by supplier, lane table.
+9. **Profile** — receiving sites with customs brokers and auto-send toggle; team per site. *Edit profile* to show it's editable.
+10. **Sign out** (account menu) → back on the login page.
+
+Tip: "Reset demo profile" on the Edit profile page restores the sample data after people have clicked around.
 
 ## Run
 
@@ -51,7 +71,7 @@ The header has AWB/shipment search, an EN/ES language switch, a notification bel
 | Shipment offload (should have) | Red alert + timeline exception, old flight struck through, notification |
 | Shipper, consignee, actual & chargeable weight, shipment no., AWB | Details card, shipments table, document preview |
 
-Sample data: 8 active shipments plus ~60 generated historical shipments (Aug–Nov 2026). "Now" is fixed at 25 Nov 2026 10:00 UTC so the demo always looks the same.
+Sample data: 8 active inbound shipments plus ~60 generated historical shipments (Aug–Nov 2026), from 5 European suppliers to 4 receiving sites. "Now" is fixed at 25 Nov 2026 10:00 UTC so the demo always looks the same.
 
 ## Structure
 

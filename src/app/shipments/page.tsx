@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, Search, SlidersHorizontal, X } from "lucide-react";
 import { PAGE, PageHeader } from "@/components/AppShell";
 import { DelayChip, StatusPill, cx } from "@/components/shipment";
-import { AIRPORTS, ALL_SHIPMENTS, STATUS_GROUP, departedAt, eta, etd, formatTime, type Shipment, type StatusGroup } from "@/lib/data";
+import { ALL_SHIPMENTS, SITES, STATUS_GROUP, SUPPLIERS, departedAt, eta, etd, formatTime, supplierName, type Shipment, type StatusGroup } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
 type SortKey = "id" | "destination" | "pieces" | "chargeableWeight" | "etd" | "eta" | "status";
@@ -44,6 +44,7 @@ export default function ShipmentsPage() {
   const [q, setQ] = useState("");
   const [group, setGroup] = useState<StatusGroup>("all");
   const [dest, setDest] = useState("all");
+  const [supplier, setSupplier] = useState("all");
   const [period, setPeriod] = useState("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "etd", dir: -1 });
   const [page, setPage] = useState(1);
@@ -57,9 +58,10 @@ export default function ShipmentsPage() {
     const list = ALL_SHIPMENTS.filter((s) => {
       if (group !== "all" && STATUS_GROUP[s.status] !== group) return false;
       if (dest !== "all" && s.destination !== dest) return false;
+      if (supplier !== "all" && s.shipper !== supplier) return false;
       if (new Date(departedAt(s)).getTime() < cutoff) return false;
       if (!qq) return true;
-      return [s.id, s.awb, s.destination, s.consignee, s.reference, s.commodity, ...s.flights].join(" ").toLowerCase().replace(/[\s-]/g, "").includes(qq);
+      return [s.id, s.awb, s.destination, s.shipper, s.consignee, s.reference, s.commodity, ...s.flights].join(" ").toLowerCase().replace(/[\s-]/g, "").includes(qq);
     });
     const val = (s: Shipment): string | number => {
       switch (sort.key) {
@@ -74,13 +76,13 @@ export default function ShipmentsPage() {
       }
     };
     return [...list].sort((a, b) => (val(a) > val(b) ? 1 : val(a) < val(b) ? -1 : 0) * sort.dir);
-  }, [q, group, dest, period, sort]);
+  }, [q, group, dest, supplier, period, sort]);
 
   const pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
   const current = Math.min(page, pages);
   const visible = rows.slice((current - 1) * PER_PAGE, current * PER_PAGE);
   const totals = rows.reduce((a, s) => ({ pcs: a.pcs + s.pieces, kg: a.kg + s.chargeableWeight }), { pcs: 0, kg: 0 });
-  const filtersOn = q || group !== "all" || dest !== "all" || period !== "all";
+  const filtersOn = q || group !== "all" || dest !== "all" || supplier !== "all" || period !== "all";
 
   const exportCsv = () => {
     const blob = new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8" });
@@ -114,7 +116,7 @@ export default function ShipmentsPage() {
     <main className={PAGE}>
       <PageHeader
         title={t("shipments")}
-        subtitle={`${ALL_SHIPMENTS.length} shipments · active and completed over the last months`}
+        subtitle={`${ALL_SHIPMENTS.length} inbound shipments to your sites · active and completed`}
         actions={
           <button onClick={exportCsv} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">
             <Download className="h-3.5 w-3.5" /> Export CSV ({rows.length})
@@ -133,7 +135,7 @@ export default function ShipmentsPage() {
                 setQ(e.target.value);
                 setPage(1);
               }}
-              placeholder="Search shipment, AWB, consignee, reference, flight…"
+              placeholder="Search shipment, AWB, supplier, reference, flight…"
               className="h-9 w-full rounded-lg bg-slate-50 pl-9 pr-3 text-sm outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -146,12 +148,28 @@ export default function ShipmentsPage() {
                 setPage(1);
               }}
               className={select}
-              aria-label="Destination"
+              aria-label="Receiving site"
             >
-              <option value="all">All destinations</option>
+              <option value="all">All sites</option>
               {destinations.map((d) => (
                 <option key={d} value={d}>
-                  {d} · {AIRPORTS[d].city}
+                  {SITES[d].name} ({d})
+                </option>
+              ))}
+            </select>
+            <select
+              value={supplier}
+              onChange={(e) => {
+                setSupplier(e.target.value);
+                setPage(1);
+              }}
+              className={select}
+              aria-label="Supplier"
+            >
+              <option value="all">All suppliers</option>
+              {SUPPLIERS.map((sp) => (
+                <option key={sp} value={sp}>
+                  {supplierName(sp)}
                 </option>
               ))}
             </select>
@@ -176,6 +194,7 @@ export default function ShipmentsPage() {
                   setQ("");
                   setGroup("all");
                   setDest("all");
+                  setSupplier("all");
                   setPeriod("all");
                   setPage(1);
                 }}
@@ -211,13 +230,14 @@ export default function ShipmentsPage() {
       {/* Table */}
       <div className="mt-4 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
         <div className="scroll-thin overflow-x-auto">
-          <table className="w-full min-w-[1080px] text-left text-sm">
+          <table className="w-full min-w-[1180px] text-left text-sm">
             <thead className="border-b border-slate-100 bg-slate-50/60">
               <tr>
                 <Th k="id">{t("shipment")}</Th>
                 <Th>{t("awb")}</Th>
                 <Th k="destination">{t("route")}</Th>
-                <Th>{t("consignee")}</Th>
+                <Th>Supplier</Th>
+                <Th>Site</Th>
                 <Th k="pieces" right>
                   {t("pcs")}
                 </Th>
@@ -233,7 +253,7 @@ export default function ShipmentsPage() {
             <tbody className="divide-y divide-slate-100">
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-16 text-center text-sm text-slate-500">
+                  <td colSpan={11} className="px-4 py-16 text-center text-sm text-slate-500">
                     {t("no_results")}
                   </td>
                 </tr>
@@ -257,7 +277,8 @@ export default function ShipmentsPage() {
                       </div>
                       <div className="text-[11px] text-slate-400">{s.flights.join(" · ")}</div>
                     </td>
-                    <td className="max-w-[220px] truncate px-4 py-3 text-slate-600">{s.consignee.split(", ")[0]}</td>
+                    <td className="max-w-[200px] truncate px-4 py-3 text-slate-600">{supplierName(s.shipper)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">{SITES[s.destination].name}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-slate-700">{s.pieces}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-slate-700">{s.actualWeight.toLocaleString("en-GB")}</td>
                     <td className="px-4 py-3 text-right font-medium tabular-nums text-slate-900">{s.chargeableWeight.toLocaleString("en-GB")}</td>

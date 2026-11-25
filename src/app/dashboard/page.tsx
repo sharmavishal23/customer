@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowRight, Download } from "lucide-react";
+import { ArrowRight, Clock, Download, MapPin } from "lucide-react";
 import { PAGE } from "@/components/AppShell";
-import { DocPreview, Details, Documents, Notifications, ShipmentHero, ShipmentList, StatTiles, Timeline } from "@/components/shipment";
-import { SHIPMENTS, STATUS_GROUP, type Doc, type StatusGroup } from "@/lib/data";
+import { DocPreview, Details, Documents, Notifications, ShipmentHero, ShipmentList, StatTiles, StatusPill, Timeline, cx } from "@/components/shipment";
+import { SHIPMENTS, SITES, STATUS_GROUP, arrivalAt, formatTime, relative, supplierName, type Doc, type StatusGroup } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
 export default function Dashboard() {
@@ -31,6 +31,7 @@ export default function Dashboard() {
   }, [group, query]);
 
   const selected = SHIPMENTS.find((s) => s.id === selectedId) ?? SHIPMENTS[0];
+  const upcoming = useMemo(() => SHIPMENTS.filter((s) => s.status !== "arrived").sort((a, b) => +new Date(arrivalAt(a)) - +new Date(arrivalAt(b))).slice(0, 4), []);
 
   return (
     <main className={PAGE}>
@@ -57,6 +58,46 @@ export default function Dashboard() {
       </div>
 
       <StatTiles counts={counts} group={group} setGroup={setGroup} t={t} />
+
+      {/* Next arrivals — what a consignee cares about first */}
+      <section className="mt-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-[15px] font-semibold text-slate-900">{t("next_arrivals")}</h2>
+          <span className="text-xs text-slate-500">Local time at your site</span>
+        </div>
+        <div className="scroll-thin -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 xl:grid-cols-4">
+          {upcoming.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => {
+                setSelectedId(s.id);
+                document.getElementById("detail")?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className={cx(
+                "min-w-[260px] snap-start rounded-2xl bg-white p-4 text-left ring-1 transition hover:shadow-md sm:min-w-0",
+                selectedId === s.id ? "ring-2 ring-blue-600" : "ring-slate-200",
+              )}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700">
+                  <MapPin className="h-3.5 w-3.5" /> {SITES[s.destination].name}
+                </span>
+                <StatusPill status={s.status} t={t} />
+              </div>
+              <div className="mt-3 text-xl font-semibold tracking-tight text-slate-900">{formatTime(arrivalAt(s), s.destination)}</div>
+              <div className="flex items-center gap-1 text-xs text-slate-500">
+                <Clock className="h-3 w-3" /> {t("lands")} {relative(arrivalAt(s))}
+              </div>
+              <div className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">
+                <span className="font-semibold text-slate-800">#{s.id}</span> · {supplierName(s.shipper)}
+                <div className="mt-0.5">
+                  {s.pieces} pcs · {s.chargeableWeight} kg · {s.flights.join(" → ")}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[400px_minmax(0,1fr)]">
         <div className="space-y-3">

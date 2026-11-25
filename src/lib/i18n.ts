@@ -1,6 +1,13 @@
 export type Lang = "en" | "es";
 
 const en = {
+  from: "From",
+  your_site: "To your site",
+  supplier: "supplier",
+  you: "you",
+  next_clearance: "Next step: import customs clearance",
+  after_arrival: "After arrival",
+  next_arrivals: "Next arrivals",
   nav_notifications: "Notifications",
   nav_profile: "Profile",
   edit_profile: "Edit profile",
@@ -19,7 +26,7 @@ const en = {
   search_placeholder: "Track by AWB or shipment number",
   track: "Track",
   welcome: "Welcome back",
-  subtitle: "Live status of all your air freight shipments, updated automatically.",
+  subtitle: "Live status of all air freight on its way to your sites, updated automatically.",
   last_sync: "Updated 2 min ago",
   all: "All shipments",
   booked: "Booked",
@@ -73,7 +80,7 @@ const en = {
   "s.at_transit": "At transit hub",
   "s.arrived": "Arrived",
   "s.offloaded": "Rebooked",
-  "m.pickup": "Picked up at your premises",
+  "m.pickup": "Collected from shipper",
   "m.loaded": "Freight loaded on aircraft",
   "m.departed": "Departed",
   "m.transit": "Arrived at transit hub",
@@ -96,6 +103,13 @@ const en = {
 export type Key = keyof typeof en;
 
 const es: Record<Key, string> = {
+  from: "De",
+  your_site: "A su sede",
+  supplier: "proveedor",
+  you: "usted",
+  next_clearance: "Siguiente paso: despacho de importación",
+  after_arrival: "Después de la llegada",
+  next_arrivals: "Próximas llegadas",
   nav_notifications: "Notificaciones",
   nav_profile: "Perfil",
   edit_profile: "Editar perfil",
@@ -114,7 +128,7 @@ const es: Record<Key, string> = {
   search_placeholder: "Buscar por AWB o número de envío",
   track: "Rastrear",
   welcome: "Bienvenida de nuevo",
-  subtitle: "Estado en vivo de todos sus envíos aéreos, actualizado automáticamente.",
+  subtitle: "Estado en vivo de toda la carga aérea en camino a sus sedes, actualizado automáticamente.",
   last_sync: "Actualizado hace 2 min",
   all: "Todos los envíos",
   booked: "Reservado",
@@ -168,7 +182,7 @@ const es: Record<Key, string> = {
   "s.at_transit": "En escala",
   "s.arrived": "Llegado",
   "s.offloaded": "Reprogramado",
-  "m.pickup": "Recogido en sus instalaciones",
+  "m.pickup": "Recogido en el remitente",
   "m.loaded": "Carga embarcada en el avión",
   "m.departed": "Despegó",
   "m.transit": "Llegó a la escala",

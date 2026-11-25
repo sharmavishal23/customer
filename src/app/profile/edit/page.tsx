@@ -142,8 +142,8 @@ export default function EditProfilePage() {
               {input("city", "City")}
               {input("country", "Country")}
               {input("billingEmail", "Billing email", { type: "email" })}
-              {input("vat", "VAT number")}
-              {input("eori", "EORI number")}
+              {input("vat", "Tax ID (CNPJ / RFC / NIT / RUT)")}
+              {input("eori", "Importer registration")}
             </div>
           </section>
 
@@ -168,7 +168,7 @@ export default function EditProfilePage() {
                   onChange={(e) => set("timezone", e.target.value)}
                   className="mt-1 h-10 w-full rounded-lg bg-white px-3 text-sm outline-none ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-500"
                 >
-                  {["Europe/Amsterdam", "Europe/London", "America/Sao_Paulo", "America/Mexico_City", "America/Bogota", "America/New_York", "Asia/Hong_Kong", "Asia/Singapore"].map((z) => (
+                  {["America/Sao_Paulo", "America/Mexico_City", "America/Bogota", "America/Santiago", "Europe/Amsterdam"].map((z) => (
                     <option key={z}>{z}</option>
                   ))}
                 </select>

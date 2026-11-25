@@ -1,6 +1,8 @@
-// Mock data for the customer track & trace portal.
-// Shape mirrors the requirements: milestones (pick-up, loaded, ETD/ATD, transit,
-// ETA/ATA, offload) and shipment data (shipper, consignee, weights, shipment no., AWB).
+// Mock data for the consignee track & trace portal.
+// Perspective: the logged-in customer is the CONSIGNEE (receiver) of shipments that
+// Airflo forwards from Amsterdam. Shape mirrors the requirements: milestones (pick-up,
+// loaded, ETD/ATD, transit, ETA/ATA, offload) and shipment data (shipper, consignee,
+// actual & chargeable weight, shipment no., AWB).
 
 export const NOW = new Date("2026-11-25T10:00:00Z");
 
@@ -8,15 +10,63 @@ export type Airport = { code: string; city: string; country: string; tz: string;
 
 export const AIRPORTS: Record<string, Airport> = {
   AMS: { code: "AMS", city: "Amsterdam", country: "Netherlands", tz: "Europe/Amsterdam", coords: [4.76, 52.31] },
-  HKG: { code: "HKG", city: "Hong Kong", country: "Hong Kong SAR", tz: "Asia/Hong_Kong", coords: [113.91, 22.31] },
-  DXB: { code: "DXB", city: "Dubai", country: "UAE", tz: "Asia/Dubai", coords: [55.36, 25.25] },
-  SIN: { code: "SIN", city: "Singapore", country: "Singapore", tz: "Asia/Singapore", coords: [103.99, 1.36] },
   GRU: { code: "GRU", city: "São Paulo", country: "Brazil", tz: "America/Sao_Paulo", coords: [-46.47, -23.43] },
   MEX: { code: "MEX", city: "Mexico City", country: "Mexico", tz: "America/Mexico_City", coords: [-99.07, 19.44] },
-  PVG: { code: "PVG", city: "Shanghai", country: "China", tz: "Asia/Shanghai", coords: [121.8, 31.14] },
   BOG: { code: "BOG", city: "Bogotá", country: "Colombia", tz: "America/Bogota", coords: [-74.14, 4.7] },
-  JFK: { code: "JFK", city: "New York", country: "United States", tz: "America/New_York", coords: [-73.78, 40.64] },
+  SCL: { code: "SCL", city: "Santiago", country: "Chile", tz: "America/Santiago", coords: [-70.79, -33.39] },
 };
+
+/* ---------------- the consignee (logged-in customer) ---------------- */
+
+export type Site = { code: string; name: string; company: string; address: string; broker: string; brokerEmail: string };
+
+/** Receiving sites of the consignee group, keyed by destination airport. */
+export const SITES: Record<string, Site> = {
+  GRU: {
+    code: "GRU",
+    name: "São Paulo",
+    company: "Nordhaven do Brasil Ltda",
+    address: "Av. Industrial 1450, Guarulhos – SP, Brazil",
+    broker: "Despachos Paulista Ltda",
+    brokerEmail: "operacoes@despachos-paulista.example",
+  },
+  MEX: {
+    code: "MEX",
+    name: "Mexico City",
+    company: "Nordhaven México S.A. de C.V.",
+    address: "Calle Norte 35 No. 820, Azcapotzalco, CDMX, Mexico",
+    broker: "Agencia Aduanal Del Valle",
+    brokerEmail: "trafico@aa-delvalle.example",
+  },
+  BOG: {
+    code: "BOG",
+    name: "Bogotá",
+    company: "Nordhaven Colombia S.A.S.",
+    address: "Zona Franca Bogotá, Calle 13 #105-20, Colombia",
+    broker: "Aduanas Andina SIA",
+    brokerEmail: "operaciones@aduanas-andina.example",
+  },
+  SCL: {
+    code: "SCL",
+    name: "Santiago",
+    company: "Nordhaven Chile SpA",
+    address: "Av. Américo Vespucio 1501, Pudahuel, Santiago, Chile",
+    broker: "Agencia de Aduanas Pacífico",
+    brokerEmail: "importaciones@aduanas-pacifico.example",
+  },
+};
+
+export const SUPPLIERS = [
+  "Van Leeuwen Hydraulics B.V., Rotterdam",
+  "Brabant Sensor Systems B.V., Eindhoven",
+  "Kessler Antriebstechnik GmbH, Duisburg",
+  "Delta Valves N.V., Antwerp",
+  "Nordhaven Industrial Parts B.V., Rotterdam",
+];
+
+export const supplierName = (s: string) => s.split(", ")[0];
+
+/* ---------------- types ---------------- */
 
 export type Status = "booked" | "picked_up" | "in_flight" | "at_transit" | "arrived" | "offloaded";
 export type StatusGroup = "all" | "booked" | "transit" | "arrived" | "exception";
@@ -42,7 +92,8 @@ export type Milestone = {
   note?: string;
 };
 
-export type Doc = { kind: "awb" | "booking" | "invoice" | "packing" | "pod"; name: string; date: string; size: string };
+export type DocKind = "awb" | "invoice" | "packing" | "origin" | "arrival";
+export type Doc = { kind: DocKind; name: string; date: string; size: string };
 
 export type Shipment = {
   id: string;
@@ -64,15 +115,16 @@ export type Shipment = {
   documents: Doc[];
 };
 
-const docs = (date: string, withPod = false): Doc[] => [
+/** Documents a consignee needs; the arrival notice is issued once the flight has landed. */
+const docs = (date: string, arrivedAt?: string): Doc[] => [
   { kind: "awb", name: "Air Waybill", date, size: "182 KB" },
-  { kind: "booking", name: "Booking confirmation", date, size: "96 KB" },
   { kind: "invoice", name: "Commercial invoice", date, size: "240 KB" },
   { kind: "packing", name: "Packing list", date, size: "88 KB" },
-  ...(withPod ? [{ kind: "pod" as const, name: "Proof of delivery", date, size: "310 KB" }] : []),
+  { kind: "origin", name: "Certificate of origin", date, size: "130 KB" },
+  ...(arrivedAt ? [{ kind: "arrival" as const, name: "Arrival notice", date: arrivedAt, size: "64 KB" }] : []),
 ];
 
-export const CUSTOMER = { name: "Nordhaven Industrial Parts B.V.", contact: "Sanne de Vries", initials: "SV" };
+/* ---------------- active shipments ---------------- */
 
 export const SHIPMENTS: Shipment[] = [
   {
@@ -80,66 +132,66 @@ export const SHIPMENTS: Shipment[] = [
     awb: "074-12345675",
     status: "in_flight",
     origin: "AMS",
-    destination: "HKG",
-    flights: ["KL 887"],
-    shipper: "Nordhaven Industrial Parts B.V., Rotterdam",
-    consignee: "Kowloon Precision Machinery Ltd, Hong Kong",
+    destination: "GRU",
+    flights: ["KL 791"],
+    shipper: SUPPLIERS[0],
+    consignee: `${SITES.GRU.company}, São Paulo`,
     pieces: 42,
     actualWeight: 615,
     chargeableWeight: 702,
     commodity: "Hydraulic pump components",
-    reference: "PO-88231",
+    reference: "PO-BR-88231",
     milestones: [
-      { key: "pickup", at: "AMS", planned: "2026-11-24T06:00:00Z", actual: "2026-11-24T06:10:00Z", source: "trucking" },
-      { key: "loaded", at: "AMS", planned: "2026-11-24T17:00:00Z", actual: "2026-11-24T16:42:00Z", source: "airline" },
-      { key: "departed", at: "AMS", planned: "2026-11-24T19:20:00Z", actual: "2026-11-24T19:34:00Z", source: "flight" },
-      { key: "arrived", at: "HKG", planned: "2026-11-25T13:45:00Z", source: "flight", note: "ETA updated from live flight data" },
+      { key: "pickup", at: "AMS", planned: "2026-11-24T08:00:00Z", actual: "2026-11-24T08:10:00Z", source: "trucking", note: "Collected at Van Leeuwen Hydraulics, Rotterdam" },
+      { key: "loaded", at: "AMS", planned: "2026-11-24T21:00:00Z", actual: "2026-11-24T20:42:00Z", source: "airline" },
+      { key: "departed", at: "AMS", planned: "2026-11-24T23:55:00Z", actual: "2026-11-25T00:09:00Z", source: "flight" },
+      { key: "arrived", at: "GRU", planned: "2026-11-25T12:05:00Z", source: "flight", note: "ETA updated from live flight data" },
     ],
-    documents: docs("2026-11-24T08:00:00Z"),
+    documents: docs("2026-11-24T09:00:00Z"),
   },
   {
     id: "5007",
-    awb: "176-55120384",
+    awb: "045-55120384",
     status: "at_transit",
     origin: "AMS",
-    destination: "SIN",
-    via: "DXB",
-    flights: ["EK 148", "EK 354"],
-    shipper: "Nordhaven Industrial Parts B.V., Rotterdam",
-    consignee: "Orchid Lane Engineering Pte Ltd, Singapore",
+    destination: "SCL",
+    via: "GRU",
+    flights: ["KL 791", "LA 702"],
+    shipper: SUPPLIERS[3],
+    consignee: `${SITES.SCL.company}, Santiago`,
     pieces: 28,
     actualWeight: 403,
     chargeableWeight: 455,
     commodity: "Valve assemblies",
-    reference: "PO-88207",
+    reference: "PO-CL-88207",
     milestones: [
-      { key: "pickup", at: "AMS", planned: "2026-11-23T08:00:00Z", actual: "2026-11-23T08:05:00Z", source: "trucking" },
-      { key: "loaded", at: "AMS", planned: "2026-11-23T18:30:00Z", actual: "2026-11-23T18:12:00Z", source: "airline" },
-      { key: "departed", at: "AMS", planned: "2026-11-23T21:10:00Z", actual: "2026-11-23T21:25:00Z", source: "flight" },
-      { key: "transit", at: "DXB", planned: "2026-11-24T05:35:00Z", actual: "2026-11-24T05:22:00Z", source: "flight", note: "Connecting to EK 354 · departs 25 Nov 17:40 local" },
-      { key: "arrived", at: "SIN", planned: "2026-11-26T05:10:00Z", source: "flight" },
+      { key: "pickup", at: "AMS", planned: "2026-11-23T07:30:00Z", actual: "2026-11-23T07:35:00Z", source: "trucking", note: "Collected at Delta Valves, Antwerp" },
+      { key: "loaded", at: "AMS", planned: "2026-11-23T21:00:00Z", actual: "2026-11-23T20:48:00Z", source: "airline" },
+      { key: "departed", at: "AMS", planned: "2026-11-23T23:55:00Z", actual: "2026-11-24T00:10:00Z", source: "flight" },
+      { key: "transit", at: "GRU", planned: "2026-11-24T12:05:00Z", actual: "2026-11-24T11:52:00Z", source: "flight", note: "Connecting to LA 702 · departs 25 Nov 10:15 local" },
+      { key: "arrived", at: "SCL", planned: "2026-11-25T17:30:00Z", source: "flight" },
     ],
-    documents: docs("2026-11-23T09:00:00Z"),
+    documents: docs("2026-11-23T08:00:00Z"),
   },
   {
     id: "5008",
     awb: "074-12345691",
     status: "booked",
     origin: "AMS",
-    destination: "GRU",
-    flights: ["KL 791"],
-    shipper: "Nordhaven Industrial Parts B.V., Rotterdam",
-    consignee: "Flores Engenharia Industrial Ltda, São Paulo",
+    destination: "BOG",
+    flights: ["KL 747"],
+    shipper: SUPPLIERS[2],
+    consignee: `${SITES.BOG.company}, Bogotá`,
     pieces: 35,
     actualWeight: 521,
     chargeableWeight: 521,
     commodity: "Gearbox spare parts",
-    reference: "PO-88240",
+    reference: "PO-CO-88240",
     milestones: [
-      { key: "pickup", at: "AMS", planned: "2026-11-26T06:00:00Z", source: "trucking" },
-      { key: "loaded", at: "AMS", planned: "2026-11-26T16:00:00Z", source: "airline" },
-      { key: "departed", at: "AMS", planned: "2026-11-26T20:30:00Z", source: "flight" },
-      { key: "arrived", at: "GRU", planned: "2026-11-27T08:30:00Z", source: "flight" },
+      { key: "pickup", at: "AMS", planned: "2026-11-26T06:00:00Z", source: "trucking", note: "Collection at Kessler Antriebstechnik, Duisburg" },
+      { key: "loaded", at: "AMS", planned: "2026-11-26T13:00:00Z", source: "airline" },
+      { key: "departed", at: "AMS", planned: "2026-11-26T15:30:00Z", source: "flight" },
+      { key: "arrived", at: "BOG", planned: "2026-11-27T02:30:00Z", source: "flight" },
     ],
     documents: docs("2026-11-24T14:00:00Z").slice(0, 3),
   },
@@ -150,114 +202,116 @@ export const SHIPMENTS: Shipment[] = [
     origin: "AMS",
     destination: "MEX",
     flights: ["KL 685"],
-    shipper: "Nordhaven Industrial Parts B.V., Eindhoven",
-    consignee: "Distribuidora Industrial Jardín SA de CV, Mexico City",
+    shipper: SUPPLIERS[1],
+    consignee: `${SITES.MEX.company}, Mexico City`,
     pieces: 18,
     actualWeight: 260,
     chargeableWeight: 318,
     commodity: "Sensor modules",
-    reference: "PO-88190",
+    reference: "PO-MX-88190",
     milestones: [
-      { key: "pickup", at: "AMS", planned: "2026-11-22T07:00:00Z", actual: "2026-11-22T07:20:00Z", source: "trucking" },
+      { key: "pickup", at: "AMS", planned: "2026-11-22T07:00:00Z", actual: "2026-11-22T07:20:00Z", source: "trucking", note: "Collected at Brabant Sensor Systems, Eindhoven" },
       { key: "loaded", at: "AMS", planned: "2026-11-22T13:30:00Z", actual: "2026-11-22T13:10:00Z", source: "airline" },
       { key: "departed", at: "AMS", planned: "2026-11-22T16:20:00Z", actual: "2026-11-22T16:31:00Z", source: "flight" },
       { key: "arrived", at: "MEX", planned: "2026-11-23T03:50:00Z", actual: "2026-11-23T03:41:00Z", source: "flight" },
     ],
-    documents: docs("2026-11-22T08:00:00Z", true),
+    documents: docs("2026-11-22T08:00:00Z", "2026-11-23T04:30:00Z"),
   },
   {
     id: "5010",
     awb: "074-12345713",
     status: "offloaded",
     origin: "AMS",
-    destination: "PVG",
-    flights: ["KL 897"],
-    previousFlight: "KL 895",
-    shipper: "Nordhaven Industrial Parts B.V., Rotterdam",
-    consignee: "Shanghai Huaxin Automation Co., Ltd",
+    destination: "MEX",
+    flights: ["KL 687"],
+    previousFlight: "KL 685",
+    shipper: SUPPLIERS[4],
+    consignee: `${SITES.MEX.company}, Mexico City`,
     pieces: 60,
     actualWeight: 1180,
     chargeableWeight: 1240,
     commodity: "Conveyor drive units",
-    reference: "PO-88215",
+    reference: "PO-MX-88215",
     milestones: [
-      { key: "pickup", at: "AMS", planned: "2026-11-23T09:00:00Z", actual: "2026-11-23T09:02:00Z", source: "trucking" },
-      { key: "loaded", at: "AMS", planned: "2026-11-23T15:00:00Z", actual: "2026-11-23T14:48:00Z", source: "airline" },
-      { key: "offload", at: "AMS", actual: "2026-11-23T17:40:00Z", source: "airline", note: "Offloaded from KL 895 due to capacity. Rebooked on KL 897 — no action needed." },
-      { key: "departed", at: "AMS", planned: "2026-11-25T18:30:00Z", source: "flight" },
-      { key: "arrived", at: "PVG", planned: "2026-11-26T05:30:00Z", source: "flight" },
+      { key: "pickup", at: "AMS", planned: "2026-11-23T09:00:00Z", actual: "2026-11-23T09:02:00Z", source: "trucking", note: "Collected at Nordhaven Industrial Parts, Rotterdam" },
+      { key: "loaded", at: "AMS", planned: "2026-11-23T14:00:00Z", actual: "2026-11-23T13:48:00Z", source: "airline" },
+      { key: "offload", at: "AMS", actual: "2026-11-23T15:40:00Z", source: "airline", note: "Offloaded from KL 685 due to aircraft capacity. Rebooked on KL 687 — no action needed." },
+      { key: "departed", at: "AMS", planned: "2026-11-25T16:20:00Z", source: "flight" },
+      { key: "arrived", at: "MEX", planned: "2026-11-26T03:50:00Z", source: "flight" },
     ],
     documents: docs("2026-11-23T10:00:00Z"),
   },
   {
     id: "5011",
-    awb: "045-90021477",
+    awb: "074-90021477",
     status: "arrived",
     origin: "AMS",
     destination: "BOG",
-    flights: ["AV 31"],
-    shipper: "Nordhaven Industrial Parts B.V., Rotterdam",
-    consignee: "Andes Maquinaria SAS, Bogotá",
+    flights: ["KL 747"],
+    shipper: SUPPLIERS[0],
+    consignee: `${SITES.BOG.company}, Bogotá`,
     pieces: 12,
     actualWeight: 188,
     chargeableWeight: 230,
     commodity: "Bearings & seals",
-    reference: "PO-88162",
+    reference: "PO-CO-88162",
     milestones: [
-      { key: "pickup", at: "AMS", planned: "2026-11-20T07:00:00Z", actual: "2026-11-20T06:55:00Z", source: "trucking" },
-      { key: "loaded", at: "AMS", planned: "2026-11-20T14:00:00Z", actual: "2026-11-20T13:40:00Z", source: "airline" },
-      { key: "departed", at: "AMS", planned: "2026-11-20T16:05:00Z", actual: "2026-11-20T16:50:00Z", source: "flight" },
-      { key: "arrived", at: "BOG", planned: "2026-11-21T03:05:00Z", actual: "2026-11-21T03:38:00Z", source: "flight" },
+      { key: "pickup", at: "AMS", planned: "2026-11-20T07:00:00Z", actual: "2026-11-20T06:55:00Z", source: "trucking", note: "Collected at Van Leeuwen Hydraulics, Rotterdam" },
+      { key: "loaded", at: "AMS", planned: "2026-11-20T13:00:00Z", actual: "2026-11-20T12:40:00Z", source: "airline" },
+      { key: "departed", at: "AMS", planned: "2026-11-20T15:30:00Z", actual: "2026-11-20T16:15:00Z", source: "flight" },
+      { key: "arrived", at: "BOG", planned: "2026-11-21T02:30:00Z", actual: "2026-11-21T03:02:00Z", source: "flight" },
     ],
-    documents: docs("2026-11-20T08:00:00Z", true),
+    documents: docs("2026-11-20T08:00:00Z", "2026-11-21T04:00:00Z"),
   },
   {
     id: "5012",
-    awb: "006-33418820",
+    awb: "074-33418820",
     status: "in_flight",
     origin: "AMS",
-    destination: "JFK",
-    flights: ["DL 47"],
-    shipper: "Nordhaven Industrial Parts B.V., Eindhoven",
-    consignee: "Hudson Industrial Supply Inc., New York",
+    destination: "MEX",
+    flights: ["KL 685"],
+    shipper: SUPPLIERS[1],
+    consignee: `${SITES.MEX.company}, Mexico City`,
     pieces: 9,
     actualWeight: 142,
     chargeableWeight: 167,
     commodity: "Control panels",
-    reference: "PO-88244",
+    reference: "PO-MX-88244",
     milestones: [
-      { key: "pickup", at: "AMS", planned: "2026-11-24T13:00:00Z", actual: "2026-11-24T13:05:00Z", source: "trucking" },
-      { key: "loaded", at: "AMS", planned: "2026-11-25T05:00:00Z", actual: "2026-11-25T04:52:00Z", source: "airline" },
-      { key: "departed", at: "AMS", planned: "2026-11-25T06:55:00Z", actual: "2026-11-25T07:05:00Z", source: "flight" },
-      { key: "arrived", at: "JFK", planned: "2026-11-25T15:35:00Z", source: "flight" },
+      { key: "pickup", at: "AMS", planned: "2026-11-24T13:00:00Z", actual: "2026-11-24T13:05:00Z", source: "trucking", note: "Collected at Brabant Sensor Systems, Eindhoven" },
+      { key: "loaded", at: "AMS", planned: "2026-11-25T04:00:00Z", actual: "2026-11-25T03:52:00Z", source: "airline" },
+      { key: "departed", at: "AMS", planned: "2026-11-25T06:15:00Z", actual: "2026-11-25T06:22:00Z", source: "flight" },
+      { key: "arrived", at: "MEX", planned: "2026-11-25T17:50:00Z", source: "flight" },
     ],
     documents: docs("2026-11-24T10:00:00Z"),
   },
   {
     id: "5013",
-    awb: "160-77210345",
+    awb: "074-77210345",
     status: "picked_up",
     origin: "AMS",
-    destination: "HKG",
-    flights: ["CX 270"],
-    shipper: "Nordhaven Industrial Parts B.V., Rotterdam",
-    consignee: "Kowloon Precision Machinery Ltd, Hong Kong",
+    destination: "SCL",
+    via: "GRU",
+    flights: ["KL 791", "LA 702"],
+    shipper: SUPPLIERS[2],
+    consignee: `${SITES.SCL.company}, Santiago`,
     pieces: 22,
     actualWeight: 336,
     chargeableWeight: 390,
     commodity: "Pump housings",
-    reference: "PO-88249",
+    reference: "PO-CL-88249",
     milestones: [
-      { key: "pickup", at: "AMS", planned: "2026-11-25T07:00:00Z", actual: "2026-11-25T07:12:00Z", source: "trucking" },
-      { key: "loaded", at: "AMS", planned: "2026-11-25T15:30:00Z", source: "airline" },
-      { key: "departed", at: "AMS", planned: "2026-11-25T19:05:00Z", source: "flight" },
-      { key: "arrived", at: "HKG", planned: "2026-11-26T06:50:00Z", source: "flight" },
+      { key: "pickup", at: "AMS", planned: "2026-11-25T07:00:00Z", actual: "2026-11-25T07:12:00Z", source: "trucking", note: "Collected at Kessler Antriebstechnik, Duisburg" },
+      { key: "loaded", at: "AMS", planned: "2026-11-25T21:00:00Z", source: "airline" },
+      { key: "departed", at: "AMS", planned: "2026-11-25T23:55:00Z", source: "flight" },
+      { key: "transit", at: "GRU", planned: "2026-11-26T12:05:00Z", source: "flight", note: "Connecting to LA 702" },
+      { key: "arrived", at: "SCL", planned: "2026-11-26T17:40:00Z", source: "flight" },
     ],
     documents: docs("2026-11-24T16:00:00Z").slice(0, 3),
   },
 ];
 
-// ---------- helpers ----------
+/* ---------------- helpers ---------------- */
 
 export const ms = (s: Shipment, key: MilestoneKey) => s.milestones.find((m) => m.key === key);
 
@@ -302,7 +356,7 @@ export function relative(iso: string) {
   return diff >= 0 ? `in ${span}` : `${span} ago`;
 }
 
-// ---------- history (deterministic sample data for reports, tables & documents) ----------
+/* ---------------- history (deterministic sample data for reports, tables & documents) ---------------- */
 
 function mulberry32(seed: number) {
   return () => {
@@ -314,17 +368,13 @@ function mulberry32(seed: number) {
   };
 }
 
-type Lane = { dest: string; via?: string; flights: string[]; prefix: string; depHour: number; legs: number[]; consignee: string; weight: number };
+type Lane = { dest: string; via?: string; flights: string[]; prefix: string; depHour: number; legs: number[]; weight: number };
 
 const LANES: Lane[] = [
-  { dest: "HKG", flights: ["KL 887"], prefix: "074", depHour: 19.3, legs: [11.5], consignee: "Kowloon Precision Machinery Ltd, Hong Kong", weight: 5 },
-  { dest: "HKG", flights: ["CX 270"], prefix: "160", depHour: 19.1, legs: [11.7], consignee: "Kowloon Precision Machinery Ltd, Hong Kong", weight: 3 },
-  { dest: "SIN", via: "DXB", flights: ["EK 148", "EK 354"], prefix: "176", depHour: 21.2, legs: [6.4, 7.6], consignee: "Orchid Lane Engineering Pte Ltd, Singapore", weight: 3 },
-  { dest: "GRU", flights: ["KL 791"], prefix: "074", depHour: 20.5, legs: [12], consignee: "Flores Engenharia Industrial Ltda, São Paulo", weight: 3 },
-  { dest: "MEX", flights: ["KL 685"], prefix: "074", depHour: 16.3, legs: [11.5], consignee: "Distribuidora Industrial Jardín SA de CV, Mexico City", weight: 2 },
-  { dest: "PVG", flights: ["KL 895"], prefix: "074", depHour: 18.5, legs: [11], consignee: "Shanghai Huaxin Automation Co., Ltd", weight: 3 },
-  { dest: "BOG", flights: ["AV 31"], prefix: "045", depHour: 16.1, legs: [11], consignee: "Andes Maquinaria SAS, Bogotá", weight: 2 },
-  { dest: "JFK", flights: ["DL 47"], prefix: "006", depHour: 6.9, legs: [8.5], consignee: "Hudson Industrial Supply Inc., New York", weight: 2 },
+  { dest: "GRU", flights: ["KL 791"], prefix: "074", depHour: 23.9, legs: [12.1], weight: 5 },
+  { dest: "MEX", flights: ["KL 685"], prefix: "074", depHour: 16.3, legs: [11.5], weight: 4 },
+  { dest: "BOG", flights: ["KL 747"], prefix: "074", depHour: 15.5, legs: [11], weight: 3 },
+  { dest: "SCL", via: "GRU", flights: ["KL 791", "LA 702"], prefix: "045", depHour: 23.9, legs: [12.1, 4.2], weight: 2 },
 ];
 
 const COMMODITIES = ["Hydraulic pump components", "Valve assemblies", "Gearbox spare parts", "Sensor modules", "Conveyor drive units", "Bearings & seals", "Control panels", "Pump housings"];
@@ -348,7 +398,7 @@ function buildHistory(): Shipment[] {
     const offloaded = r() < 0.05;
     const offDelay = offloaded ? 24 * H : 0;
     const depActual = depPlanned + depDelay * 60000 + offDelay;
-    const legsTotal = lane.legs.reduce((a, b) => a + b, 0) + (lane.via ? 3 : 0);
+    const legsTotal = lane.legs.reduce((a, b) => a + b, 0) + (lane.via ? 16 : 0);
     const arrPlanned = depPlanned + legsTotal * H;
     const arrActual = depActual + (legsTotal + (r() * 0.3 - 0.22)) * H;
     const pieces = 6 + Math.floor(r() * 60);
@@ -357,8 +407,9 @@ function buildHistory(): Shipment[] {
     const serial = 10000000 + Math.floor(r() * 89999999);
     const awbSerial = `${Math.floor(serial / 10)}`.padStart(7, "0");
     const awb = `${lane.prefix}-${awbSerial}${Number(awbSerial) % 7}`;
+    const shipper = pick(SUPPLIERS);
     const milestones: Milestone[] = [
-      { key: "pickup", at: "AMS", planned: iso(day + 7 * H), actual: iso(day + 7 * H + (r() * 30 - 10) * 60000), source: "trucking" },
+      { key: "pickup", at: "AMS", planned: iso(day + 7 * H), actual: iso(day + 7 * H + (r() * 30 - 10) * 60000), source: "trucking", note: `Collected at ${supplierName(shipper)}` },
       { key: "loaded", at: "AMS", planned: iso(depPlanned - 3 * H), actual: iso(depPlanned - 3 * H - r() * 30 * 60000), source: "airline" },
     ];
     if (offloaded)
@@ -377,15 +428,15 @@ function buildHistory(): Shipment[] {
       destination: lane.dest,
       via: lane.via,
       flights: lane.flights,
-      shipper: `Nordhaven Industrial Parts B.V., ${r() < 0.75 ? "Rotterdam" : "Eindhoven"}`,
-      consignee: lane.consignee,
+      shipper,
+      consignee: `${SITES[lane.dest].company}, ${SITES[lane.dest].name}`,
       pieces,
       actualWeight,
       chargeableWeight,
       commodity: pick(COMMODITIES),
-      reference: `PO-${87400 + Math.floor(r() * 750)}`,
+      reference: `PO-${{ GRU: "BR", MEX: "MX", BOG: "CO", SCL: "CL" }[lane.dest]}-${87400 + Math.floor(r() * 750)}`,
       milestones,
-      documents: docs(iso(day + 6 * H), true),
+      documents: docs(iso(day + 6 * H), iso(arrActual + 1 * H)),
     });
     day += Math.round(1 + r() * 1.6) * 24 * H; // a shipment every 1–3 days (keeps times of day realistic)
   }
@@ -404,3 +455,6 @@ export const departedAt = (s: Shipment) => {
   const d = etd(s);
   return d?.actual ?? d?.planned ?? s.milestones[0].planned!;
 };
+
+/** Planned or actual arrival time (ISO). */
+export const arrivalAt = (s: Shipment) => eta(s)?.actual ?? eta(s)?.planned ?? departedAt(s);

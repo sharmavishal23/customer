@@ -7,7 +7,7 @@ import AuthLayout, { inputCls, primaryBtn } from "@/components/AuthLayout";
 
 type Form = { company: string; name: string; email: string; phone: string; country: string; existing: "yes" | "no"; account: string; volume: string; lanes: string; message: string; terms: boolean };
 
-const EMPTY: Form = { company: "", name: "", email: "", phone: "", country: "Netherlands", existing: "yes", account: "", volume: "1–5 shipments / month", lanes: "", message: "", terms: false };
+const EMPTY: Form = { company: "", name: "", email: "", phone: "", country: "Brazil", existing: "yes", account: "", volume: "1–5 shipments / month", lanes: "", message: "", terms: false };
 
 export default function RequestAccessPage() {
   const [f, setF] = useState<Form>(EMPTY);
@@ -21,7 +21,7 @@ export default function RequestAccessPage() {
     if (!f.company.trim()) e.company = "Required";
     if (!f.name.trim()) e.name = "Required";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) e.email = "Enter a valid email";
-    if (f.existing === "yes" && !f.account.trim()) e.account = "Add your Airflo account or a recent AWB";
+    if (f.existing === "yes" && !f.account.trim()) e.account = "Add a recent AWB or the supplier that ships to you";
     if (!f.terms) e.terms = "Please accept to continue";
     return e;
   };
@@ -86,15 +86,15 @@ export default function RequestAccessPage() {
           setTimeout(() => setDone(true), 800);
         }}
       >
-        {field("company", "Company name", { placeholder: "Your company B.V." })}
+        {field("company", "Company name", { placeholder: "Your company S.A." })}
         <div className="grid gap-4 sm:grid-cols-2">
           {field("name", "Full name", { autoComplete: "name" })}
-          {field("phone", "Phone / WhatsApp", { type: "tel", placeholder: "+31 6 …" })}
+          {field("phone", "Phone / WhatsApp", { type: "tel", placeholder: "+55 11 …" })}
         </div>
         {field("email", "Work email", { type: "email", autoComplete: "email", placeholder: "name@company.com" })}
 
         <div>
-          <span className="text-sm font-medium text-slate-700">Are you already shipping with Airflo?</span>
+          <span className="text-sm font-medium text-slate-700">Do you already receive shipments via Airflo?</span>
           <div className="mt-1.5 grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
             {(["yes", "no"] as const).map((v) => (
               <button
@@ -103,14 +103,14 @@ export default function RequestAccessPage() {
                 onClick={() => set("existing", v)}
                 className={`rounded-lg py-2 text-sm font-semibold ${f.existing === v ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
               >
-                {v === "yes" ? "Yes, existing customer" : "Not yet"}
+                {v === "yes" ? "Yes, I receive via Airflo" : "Not yet"}
               </button>
             ))}
           </div>
         </div>
 
         {f.existing === "yes" ? (
-          field("account", "Airflo account number or a recent AWB", { placeholder: "AF-100284 or 074-12345675" })
+          field("account", "A recent AWB or your supplier's name", { placeholder: "074-12345675 or supplier name" })
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block">
@@ -121,14 +121,14 @@ export default function RequestAccessPage() {
                 ))}
               </select>
             </label>
-            {field("lanes", "Main destinations", { placeholder: "e.g. GRU, MEX, HKG" })}
+            {field("lanes", "Where do you receive cargo?", { placeholder: "e.g. São Paulo, Mexico City" })}
           </div>
         )}
 
         <label className="block">
           <span className="text-sm font-medium text-slate-700">Country</span>
           <select value={f.country} onChange={(e) => set("country", e.target.value)} className={`mt-1.5 ${inputCls}`}>
-            {["Netherlands", "Belgium", "Germany", "Brazil", "Mexico", "Colombia", "Chile", "Peru", "United States", "Other"].map((c) => (
+            {["Brazil", "Mexico", "Colombia", "Chile", "Peru", "Argentina", "Ecuador", "Other"].map((c) => (
               <option key={c}>{c}</option>
             ))}
           </select>
